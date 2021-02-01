@@ -23,3 +23,5 @@ class PickImage extends ChatScreenStates{}
 class ImageUploadSuccess extends ChatScreenStates{}
 class GetUserId extends ChatScreenStates{}
 class ChatScreenFailed extends ChatScreenStates{}
+class ChatScreenMessage extends ChatScreenStates{}
+class ChatScreenMessageNotification extends ChatScreenStates{}

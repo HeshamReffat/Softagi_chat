@@ -1,10 +1,12 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -37,6 +39,74 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
     });
   }
 
+  final headers = {
+    'content-type': 'application/json',
+    'Authorization':
+        'key=AAAA-8Jrl9M:APA91bE7LFuH7CrmHqy-NRZUeVEsA1ni5j0pZABnWBKqVT7ODgiIGRrsddXLBJojbl6rjqtFNtgPRV5_7Vuoo51yprLpgFR49lwo14GqyzgLDyBXf5lzySIhgcKKQ9KZElqdZm-4EFkj'
+  };
+
+  // var data = {
+  //   "to":
+  //       "fzPYdStpRc-l6vhEh5ZQnl:APA91bFDP9uuJQ2XoYHxto4tRL3B12vGTLkKruCQ3ylBzSp7Pq8IsJPFD7iJGkIfzBggwtYTwTMKW8To3JexWxtm9dRNRSGd4mCSo-ZV0v910bkoa7o__hEsmJMUENECOZKgNW_mDqh8",
+  //   "notification": {
+  //     "title": "message From",
+  //     "body": "Hello From PostMan",
+  //     "sound": "deafult"
+  //   },
+  //   "android": {
+  //     "priority": "HIGH",
+  //     "notification": {
+  //       "notification_priority": "PRIORITY_MAX",
+  //       "sound": "deafult",
+  //       "default_sound": "true",
+  //       "default_vibrate_timings": "true",
+  //       "default_light_settings": "true"
+  //     }
+  //   }
+  // };
+
+  void sendNotification(String text, {String image}) async {
+    Dio dio = Dio();
+    dio.options.baseUrl = 'https://fcm.googleapis.com/';
+    dio.options.headers = headers;
+    await dio.post('fcm/send', data: {
+      "to": "${userData['deviceToken']}",
+      "notification": {
+        "title": "${myData['first_name']} ${myData['last_name']}",
+        "body": "$text",
+        "image": '$image',
+        "sound": "default"
+      },
+      "android": {
+        "priority": "HIGH",
+        "notification": {
+          "notification_priority": "PRIORITY_MAX",
+          "sound": "default",
+          "default_sound": true,
+          "default_vibrate_timings": true,
+          "default_light_settings": true
+        }
+      }
+    });
+    emit(ChatScreenMessageNotification());
+  }
+
+  void firebaseMessage() {
+    final fbm = FirebaseMessaging();
+    fbm.requestNotificationPermissions(const IosNotificationSettings(sound: true));
+    fbm.configure(onMessage: (msg) {
+      print('$msg this is it');
+      return;
+    }, onLaunch: (msg) {
+      print(msg);
+      return;
+    }, onResume: (msg) {
+      print(msg);
+      return;
+    });
+    emit(ChatScreenMessage());
+  }
+
   void getRealTimeUserData() {
     //emit(ChatScreenLoading());
     FirebaseFirestore.instance
@@ -54,7 +124,7 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
         .collection('users')
         .doc(FirebaseAuth.instance.currentUser.uid)
         .update({'chattingWith': text}).then((value) {
-          emit(UpdateChattingWith());
+      emit(UpdateChattingWith());
     });
   }
 
@@ -97,7 +167,7 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
       'newMessage': 0,
     }).then((value) {
       print('Counter updated');
-      emit(ChatScreenUpdateCounter());//
+      emit(ChatScreenUpdateCounter()); //
     });
   }
 
@@ -110,7 +180,9 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
         .get()
         .then((value) {
       checkChat = value.data();
-      if (value.exists && checkChat['newMessage'] != 0 && myData['chattingWith'] == userId) updateCounter();
+      if (value.exists &&
+          checkChat['newMessage'] != 0 &&
+          myData['chattingWith'] == userId) updateCounter();
       //emit(ChatScreenCheckChats());
     });
   }
@@ -136,13 +208,12 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
           .update({
         'last_message': lMessage,
         'lmessage_time': DateTime.now().millisecondsSinceEpoch,
-       // 'newMessage': newMessage,
+        // 'newMessage': newMessage,
         'chatCreated': 'true',
       }).then((value) {
-        if(userData['chattingWith'] == FirebaseAuth.instance.currentUser.uid)
-          {
-            setNewMessage(0);
-          }else {
+        if (userData['chattingWith'] == FirebaseAuth.instance.currentUser.uid) {
+          setNewMessage(0);
+        } else {
           setNewMessage(newMessage);
         }
         print(newMessage);
@@ -150,7 +221,8 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
       });
     });
   }
-  void setNewMessage(message){
+
+  void setNewMessage(message) {
     FirebaseFirestore.instance
         .collection('users')
         .doc(userData['id'])
@@ -176,9 +248,9 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
       'last_path': 'notfound',
       'seen': 'false',
     }).then((value) {
-      if(userData['chattingWith'] == FirebaseAuth.instance.currentUser.uid) {
+      if (userData['chattingWith'] == FirebaseAuth.instance.currentUser.uid) {
         newMessage = 0;
-      }else{
+      } else {
         newMessage++;
       }
       //emit(SendMyMessage());
@@ -221,19 +293,19 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
         .listen((event) {
       //print('list =====> ${event.docs.length}');
       chatCreated();
-          messagesList = event.docs;
-          emit(GetMessages());
-          // if (userData['chattingWith'] == FirebaseAuth.instance.currentUser.uid)
-          //   messagesList.forEach((msg) {
-          //     if (msg['seen'] == 'false')
-          //       msg.reference.update({
-          //         'seen': 'true',
-          //       });
-          //   });
-          // updateMessagesSeen();
-          //print(messagesList.first['time']);
-          //newMessage = 0;
-          //print(image.path);
+      messagesList = event.docs;
+      emit(GetMessages());
+      // if (userData['chattingWith'] == FirebaseAuth.instance.currentUser.uid)
+      //   messagesList.forEach((msg) {
+      //     if (msg['seen'] == 'false')
+      //       msg.reference.update({
+      //         'seen': 'true',
+      //       });
+      //   });
+      // updateMessagesSeen();
+      //print(messagesList.first['time']);
+      //newMessage = 0;
+      //print(image.path);
     });
   }
 
@@ -323,6 +395,7 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
         .onComplete
         .then((value) {
       value.ref.getDownloadURL().then((imageValue) {
+        sendNotification('Photo', image: imageValue.toString());
         FirebaseFirestore.instance
             .collection('users')
             .doc(FirebaseAuth.instance.currentUser.uid)
@@ -336,7 +409,7 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
           'last_messageTime': DateTime.now().millisecondsSinceEpoch,
           'last_path': Uri.file(image.path).pathSegments.last,
         }).then((value) {
-          print('my messages');
+          print('my image');
           FirebaseFirestore.instance
               .collection('users')
               .doc(userData['id'])
@@ -351,9 +424,10 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
             'last_path': Uri.file(image.path).pathSegments.last,
           }).then((value) {
             updateLastMessage('Photo');
-            if(userData['chattingWith'] == FirebaseAuth.instance.currentUser.uid) {
+            if (userData['chattingWith'] ==
+                FirebaseAuth.instance.currentUser.uid) {
               newMessage = 0;
-            }else{
+            } else {
               newMessage++;
             }
             print('usermessages');
@@ -367,7 +441,8 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
       });
     });
   }
-  void getUserId(){
+
+  void getUserId() {
     userId = getUserItemId();
     emit(GetUserId());
   }

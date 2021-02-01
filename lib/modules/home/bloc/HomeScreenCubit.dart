@@ -25,7 +25,6 @@ class HomeScreenCubit extends Cubit<HomeScreenStates> {
       emit(HomeSuccess());
     });
   }
-
   void getRealTimeData() {
     FirebaseFirestore.instance
         .collection('users')

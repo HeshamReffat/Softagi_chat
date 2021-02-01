@@ -11,6 +11,7 @@ class VerificationCubit extends Cubit<VerificationStates> {
   VerificationCubit() : super(VerificationInit());
   String smsCode;
   String phone;
+  String token;
 
   static VerificationCubit get(context) => BlocProvider.of(context);
 
@@ -22,30 +23,35 @@ class VerificationCubit extends Cubit<VerificationStates> {
     await FirebaseAuth.instance
         .signInWithCredential(phoneAuthCredential)
         .then((value) {
-      FirebaseFirestore.instance.collection('users').doc(value.user.uid).set({
-        'first_name': 'no',
-        'last_name': 'name',
-        'id': value.user.uid,
-        'phone': this.phone,
-        'image':
-            'https://i.pinimg.com/originals/51/f6/fb/51f6fb256629fc755b8870c801092942.png',
-        'status': 'offline',
-        'last_path': 'demo',
-        'chatCreated': 'false',
-        'last_message': '',
-        'newMessage': 0,
-        'lmessage_time': DateTime.now().millisecondsSinceEpoch,
-        'action': '',
-        'chattingWith': '',
-        'slogan': 'Available'
-      }).then((value) {
-      }).catchError((error) {
-        print(error.toString());
-      });
+      FirebaseFirestore.instance
+          .collection('users')
+          .doc(value.user.uid)
+          .set({
+            'first_name': 'no',
+            'last_name': 'name',
+            'id': value.user.uid,
+            'phone': this.phone,
+            'image':
+                'https://i.pinimg.com/originals/51/f6/fb/51f6fb256629fc755b8870c801092942.png',
+            'status': 'offline',
+            'last_path': 'demo',
+            'chatCreated': 'false',
+            'last_message': '',
+            'newMessage': 0,
+            'lmessage_time': DateTime.now().millisecondsSinceEpoch,
+            'action': '',
+            'chattingWith': '',
+            'deviceToken': token,
+            'slogan': 'Available'
+          })
+          .then((value) {})
+          .catchError((error) {
+            print(error.toString());
+          });
       print(value.user.uid);
+      saveCreateProfile('not');
       emit(VerificationSuccess());
-      navigateAndFinish(
-          context, CreateProfile());
+      navigateAndFinish(context, CreateProfile());
     }).catchError((e) {
       emit(VerificationFailed());
       Fluttertoast.showToast(msg: 'SMS code is Wrong');
@@ -56,5 +62,11 @@ class VerificationCubit extends Cubit<VerificationStates> {
     phone = '+20 ${getPhone()}';
     smsCode = getCode();
     emit(VerificationPhone());
+  }
+
+  void deviceToken() {
+    token = getDeviceToken();
+    print(token);
+    emit(VerificationToken());
   }
 }

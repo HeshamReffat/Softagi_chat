@@ -1,9 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:provider/provider.dart';
+import 'package:softagi_chat/modules/createprofile/create_profile.dart';
 import 'package:softagi_chat/modules/home/home_screen.dart';
 import 'package:softagi_chat/modules/verification/bloc/verification_cubit.dart';
 import 'package:softagi_chat/shared/Prefrences.dart';
@@ -14,16 +17,30 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   await initPref();
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+  FlutterLocalNotificationsPlugin();
+
+  await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+      ?.createNotificationChannel(channel);
   Widget screen;
   var currentUser = FirebaseAuth.instance.currentUser;
-  if (currentUser != null) {
+  var profile = getCreateProfile();
+  if (currentUser != null && profile == 'Created') {
     screen = HomeScreen();
+  } else if (profile == 'not') {
+    screen = CreateProfile();
   } else {
     screen = WelcomeScreen();
   }
   return runApp(MyApp(screen));
 }
-
+const AndroidNotificationChannel channel = AndroidNotificationChannel(
+  'high_importance_channel', // id
+  'High Importance Notifications', // title
+  'This channel is used for important notifications.', // description
+  importance: Importance.max,
+);
 class MyApp extends StatefulWidget {
   Widget screen;
 
@@ -35,11 +52,13 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   AppLifecycleState _lastLifecyleState;
+  var profile = '';
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    getProfile();
   }
 
   @override
@@ -56,8 +75,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     print(
-        "LifecycleWatcherState#didChangeAppLifecycleState state=${state
-            .toString()}");
+        "LifecycleWatcherState#didChangeAppLifecycleState state=${state.toString()}");
     setState(() {
       _lastLifecyleState = state;
     });
@@ -145,39 +163,40 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       //print('offfff');
     }
     return MultiBlocProvider(
-        providers: [
-          BlocProvider(create: (ctx) => VerificationCubit()),
-        ],
-        child:
-        ChangeNotifierProvider<ThemeChanger>(
-          create: (_) => ThemeChanger(),
-          child: Builder(
-            builder:(context){
-              final themeChanger = Provider.of<ThemeChanger>(context);
-              return MaterialApp(
-                debugShowCheckedModeBanner: false,
-                title: 'Softagi Chat',
-                themeMode: themeChanger.themeMode,
-                darkTheme: ThemeData(
-                  brightness: Brightness.dark,
-                  primaryColorDark: Colors.white10,
-                  primaryColor: Color(0xFF1C1C1C),
-                  scaffoldBackgroundColor: Color(0xFF1C1C1C),
-                  floatingActionButtonTheme: FloatingActionButtonThemeData(
-                    foregroundColor: Colors.white,
-                  ),
-                  /* dark theme settings */
-                ),
-                theme: ThemeData(
-                  primarySwatch: Colors.indigo,
-                  primaryColorDark: Colors.blueGrey[700],
-                  visualDensity: VisualDensity.adaptivePlatformDensity,
-                ),
-                home: widget.screen,
-              );
-            }
-          ),
-        ),
+      providers: [
+        BlocProvider(create: (ctx) => VerificationCubit()..deviceToken()),
+      ],
+      child: ChangeNotifierProvider<ThemeChanger>(
+        create: (_) => ThemeChanger(),
+        child: Builder(builder: (context) {
+          final themeChanger = Provider.of<ThemeChanger>(context);
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: 'Softagi Chat',
+            themeMode: themeChanger.themeMode,
+            darkTheme: ThemeData(
+              brightness: Brightness.dark,
+              primaryColorDark: Colors.white10,
+              primaryColor: Color(0xFF1C1C1C),
+              scaffoldBackgroundColor: Color(0xFF1C1C1C),
+              floatingActionButtonTheme: FloatingActionButtonThemeData(
+                foregroundColor: Colors.white,
+              ),
+              /* dark theme settings */
+            ),
+            theme: ThemeData(
+              primarySwatch: Colors.indigo,
+              primaryColorDark: Colors.blueGrey[700],
+              visualDensity: VisualDensity.adaptivePlatformDensity,
+            ),
+            home: widget.screen,
+          );
+        }),
+      ),
     );
+  }
+  void getProfile() {
+    profile = getCreateProfile();
+    setState(() {});
   }
 }

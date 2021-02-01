@@ -22,3 +22,15 @@ Future<bool> saveUserItemId(String userItemId) async{
 }
 
 String getUserItemId() => preferences.getString('UserItemId');
+
+Future<bool> saveDeviceToken(String token) async{
+  return await preferences.setString('Token', token);
+}
+
+String getDeviceToken() => preferences.getString('Token');
+
+Future<bool> saveCreateProfile(String created) async{
+  return await preferences.setString('Created', created);
+}
+
+String getCreateProfile() => preferences.getString('Created');

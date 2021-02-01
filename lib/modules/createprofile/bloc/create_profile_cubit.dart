@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:softagi_chat/modules/createprofile/bloc/create_profile_states.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:softagi_chat/modules/home/home_screen.dart';
+import 'package:softagi_chat/shared/Prefrences.dart';
 import 'package:softagi_chat/shared/components.dart';
 
 class CreateProfileCubit extends Cubit<CreateProfileStates> {
@@ -78,6 +79,7 @@ class CreateProfileCubit extends Cubit<CreateProfileStates> {
       'action': 'online',
     }).then((value) {
       emit(ProfileSuccess());
+      saveCreateProfile('Created');
       navigateAndFinish(
         context,
         HomeScreen(),

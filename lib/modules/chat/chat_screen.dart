@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:softagi_chat/modules/chat/bloc/chat_screen_cubit.dart';
 import 'package:softagi_chat/modules/chat/bloc/chat_screen_states.dart';
 import 'package:softagi_chat/modules/home/home_screen.dart';
+import 'package:softagi_chat/shared/Prefrences.dart';
 import 'package:softagi_chat/shared/components.dart';
 
 class ChatScreen extends StatelessWidget {
@@ -14,7 +15,7 @@ class ChatScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context)=> ChatScreenCubit()..getUserId()..getRealTimeUserData()..getRealTimeMyData(),
+      create: (context)=> ChatScreenCubit()..getUserId()..getRealTimeUserData()..getRealTimeMyData()..firebaseMessage(),
       child: BlocConsumer<ChatScreenCubit,ChatScreenStates>(
         listener: (ctx,state){
         },
@@ -25,6 +26,7 @@ class ChatScreen extends StatelessWidget {
             onWillPop: () {
               bloc.updateStatus('online');
               bloc.updateChattingWith('');
+              saveUserItemId('');
               navigateAndFinish(context, HomeScreen());
             },
             child: Scaffold(
@@ -170,7 +172,7 @@ class ChatScreen extends StatelessWidget {
                               : () {
                             bloc.sendMessage(messageController.text);
                             bloc.updateStatus('online');
-                            //bloc.newMessage++;
+                            bloc.sendNotification(messageController.text);
                             messageController.clear();
                             if (bloc.checkChat != null) {
                               bloc.checkChat['chatCreated'] == 'true'
