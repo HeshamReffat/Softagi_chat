@@ -27,8 +27,8 @@ class VerificationCubit extends Cubit<VerificationStates> {
           .collection('users')
           .doc(value.user.uid)
           .set({
-            'first_name': 'no',
-            'last_name': 'name',
+            'first_name': 'Unknown',
+            'last_name': '',
             'id': value.user.uid,
             'phone': this.phone,
             'image':

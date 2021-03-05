@@ -1,10 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:provider/provider.dart';
 import 'package:softagi_chat/modules/createprofile/create_profile.dart';
 import 'package:softagi_chat/modules/home/home_screen.dart';
@@ -17,12 +15,6 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   await initPref();
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-  FlutterLocalNotificationsPlugin();
-
-  await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(channel);
   Widget screen;
   var currentUser = FirebaseAuth.instance.currentUser;
   var profile = getCreateProfile();
@@ -33,14 +25,8 @@ void main() async {
   } else {
     screen = WelcomeScreen();
   }
-  return runApp(MyApp(screen));
+  return runApp(  MyApp(screen));
 }
-const AndroidNotificationChannel channel = AndroidNotificationChannel(
-  'high_importance_channel', // id
-  'High Importance Notifications', // title
-  'This channel is used for important notifications.', // description
-  importance: Importance.max,
-);
 class MyApp extends StatefulWidget {
   Widget screen;
 

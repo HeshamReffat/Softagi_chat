@@ -22,6 +22,20 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "2.5.0-nullsafety.1"
+  audio_recorder:
+    dependency: "direct main"
+    description:
+      name: audio_recorder
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "1.0.2"
+  audioplayers:
+    dependency: "direct main"
+    description:
+      name: audioplayers
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.17.4"
   bloc:
     dependency: transitive
     description:
@@ -401,6 +415,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "0.3.0"
+  paginate_firestore:
+    dependency: "direct main"
+    description:
+      name: paginate_firestore
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.2.2"
   path:
     dependency: transitive
     description:
@@ -409,7 +430,7 @@ packages:
     source: hosted
     version: "1.8.0-nullsafety.1"
   path_provider:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: path_provider
       url: "https://pub.dartlang.org"
@@ -514,7 +535,7 @@ packages:
     source: hosted
     version: "2.1.5"
   rxdart:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: rxdart
       url: "https://pub.dartlang.org"
@@ -630,6 +651,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "0.2.19-nullsafety.2"
+  timeago:
+    dependency: "direct main"
+    description:
+      name: timeago
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "2.0.30"
   timezone:
     dependency: transitive
     description:
