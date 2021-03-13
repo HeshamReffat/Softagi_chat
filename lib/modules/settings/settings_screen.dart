@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 import 'package:softagi_chat/modules/settings/bloc/SettingsScreenCubit.dart';
 import 'package:softagi_chat/modules/settings/bloc/SettingsScreenStates.dart';
+import 'package:softagi_chat/shared/Prefrences.dart';
 import 'package:softagi_chat/shared/ThemeChanger.dart';
 import 'package:softagi_chat/shared/components.dart';
 
@@ -510,6 +511,9 @@ class SettingsScreen extends StatelessWidget {
               value: ThemeMode.dark,
               onChanged: themeChanger.setTheme,
             ),
+            FlatButton(onPressed: (){
+              print(getAppTheme());
+            }, child: Text('get'))
           ],
         );
       },

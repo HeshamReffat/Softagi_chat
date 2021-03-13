@@ -7,16 +7,13 @@ import 'package:intl/intl.dart';
 import 'package:softagi_chat/modules/chat/bloc/chat_screen_cubit.dart';
 import 'package:softagi_chat/modules/chat/bloc/chat_screen_states.dart';
 import 'package:softagi_chat/modules/home/home_screen.dart';
+import 'package:softagi_chat/modules/playAudio.dart';
 import 'package:softagi_chat/shared/Prefrences.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:softagi_chat/shared/components.dart';
 
 class ChatScreen extends StatelessWidget {
   var messageController = TextEditingController();
-  String currentTime = "00:00";
-  String completeTime = "00:00";
-  AudioPlayer _player = AudioPlayer();
-  bool isPlaying = false;
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +22,8 @@ class ChatScreen extends StatelessWidget {
         ..getUserId()
         ..getRealTimeUserData()
         ..getRealTimeMyData()
-        ..firebaseMessage().. scroll(context),
+        ..firebaseMessage()
+        ..scroll(context),
       child: BlocConsumer<ChatScreenCubit, ChatScreenStates>(
         listener: (ctx, state) {},
         builder: (ctx, state) {
@@ -34,6 +32,7 @@ class ChatScreen extends StatelessWidget {
             // ignore: missing_return
             onWillPop: () async {
               bloc.updateStatus('online');
+              bloc.scrollController.dispose();
               bloc.updateChattingWith('');
               saveUserItemId('');
               await AudioPlayer().release();
@@ -118,9 +117,26 @@ class ChatScreen extends StatelessWidget {
                             },
                             itemCount: bloc.messagesList.length,
                           ),
-                        if (bloc.messagesList.length == 0)
-                          Center(
-                            child: Text('No messages yet'),
+                        if (bloc.isLoading == true)
+                          Container(
+                            width: MediaQuery.of(context).size.width,
+                            padding: EdgeInsets.all(5),
+                            color: Colors.green,
+                            child: bloc.messagesList.length == 0
+                                ? Text(
+                                    'No messages yet...',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  )
+                                : Text(
+                                    'Loading...',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                           ),
                       ],
                     ),
@@ -177,71 +193,18 @@ class ChatScreen extends StatelessWidget {
                                 SizedBox(
                                   width: 3.0,
                                 ),
+                                if (bloc.startRec)
+                                  InkWell(
+                                    onTap: () {
+                                      bloc.cancelRecord();
+                                    },
+                                    child: Icon(Icons.clear),
+                                  ),
+                                SizedBox(
+                                  width: 3.0,
+                                ),
                                 InkWell(
                                   onTap: () async {
-                                    // if (startRec == false) {
-                                    //   await Permission.storage.request();
-                                    //   await Permission.microphone.request();
-                                    //   try {
-                                    //     if (await AudioRecorder
-                                    //         .hasPermissions) {
-                                    //       if (_controller.text != null &&
-                                    //           _controller.text != "") {
-                                    //         String path = _controller.text;
-                                    //         if (!_controller.text
-                                    //             .contains('/')) {
-                                    //           io.Directory appDocDirectory =
-                                    //               await getApplicationDocumentsDirectory();
-                                    //           path = appDocDirectory.path +
-                                    //               '/' +
-                                    //               _controller.text;
-                                    //         }
-                                    //         print("Start recording: $path");
-                                    //         await AudioRecorder.start(
-                                    //             path: path,
-                                    //             audioOutputFormat:
-                                    //                 AudioOutputFormat.AAC);
-                                    //       } else {
-                                    //         await AudioRecorder.start();
-                                    //       }
-                                    //       bool isRecording =
-                                    //           await AudioRecorder.isRecording;
-                                    //       setState(() {
-                                    //         _recording = new Recording(
-                                    //             duration: new Duration(),
-                                    //             path: "");
-                                    //         _isRecording = isRecording;
-                                    //         startRec = true;
-                                    //       });
-                                    //     } else {
-                                    //       Fluttertoast.showToast(
-                                    //           msg:
-                                    //               "You must accept permissions");
-                                    //     }
-                                    //   } catch (e) {
-                                    //     print(e);
-                                    //   }
-                                    // } else {
-                                    //   var recording =
-                                    //       await AudioRecorder.stop();
-                                    //   print(
-                                    //       "Stop recording: ${recording.path}");
-                                    //   bool isRecording =
-                                    //       await AudioRecorder.isRecording;
-                                    //   File file = widget.localFileSystem
-                                    //       .file(recording.path);
-                                    //
-                                    //   bloc.uploadAudioFile(file);
-                                    //
-                                    //   print(
-                                    //       "  File length: ${await file.length()}");
-                                    //   setState(() {
-                                    //     _recording = recording;
-                                    //     _isRecording = isRecording;
-                                    //     startRec = false;
-                                    //   });
-                                    //   _controller.text = recording.path;
-                                    // }
                                     bloc.startRecording();
                                   },
                                   child: bloc.startRec
@@ -425,7 +388,7 @@ class ChatScreen extends StatelessWidget {
               // padding: EdgeInsets.all(
               //   10.0,
               // ),
-              child: item['last_path'] == 'image'
+              child: item['type'] == 'image'
                   ? InkWell(
                       onLongPress: () {
                         showImageDialog(
@@ -462,14 +425,14 @@ class ChatScreen extends StatelessWidget {
                       padding: const EdgeInsets.all(10.0),
                       child: Column(
                         children: [
-                          if (item['last_path'] == 'notfound')
+                          if (item['type'] == 'text')
                             Text(
                               '${item['message']}',
                               style: TextStyle(
                                 color: Colors.white,
                               ),
                             ),
-                          if (item['last_path'] == 'audio')
+                          if (item['type'] == 'audio')
                             MaterialButton(
                               onPressed: () {
                                 audioDialog(
@@ -491,8 +454,8 @@ class ChatScreen extends StatelessWidget {
                               Icon(
                                 Icons.check_rounded,
                                 size: 15.0,
-                                color: bloc.userData['chattingWith'] ==
-                                        FirebaseAuth.instance.currentUser.uid
+                                color: item['seen'] ==
+                                        'true'
                                     ? Colors.blue
                                     : Colors.white,
                               ),
@@ -583,108 +546,7 @@ class ChatScreen extends StatelessWidget {
       transitionDuration: Duration(milliseconds: 700),
       context: context,
       pageBuilder: (_, __, ___) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return WillPopScope(
-              onWillPop: () async {
-                await _player.stop();
-                isPlaying = false;
-                Navigator.pop(context);
-                setState(() {});
-                return;
-              },
-              child: Align(
-                alignment: Alignment.center,
-                child: Container(
-                  height: 60,
-                  width: double.infinity,
-                  child: SizedBox.expand(
-                    child: Container(
-                      decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: BorderRadius.circular(20)),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          FlatButton(
-                            onPressed: () async {
-                              _player.onAudioPositionChanged
-                                  .listen((Duration duration) {
-                                setState(() {
-                                  currentTime =
-                                      duration.toString().split(".")[0];
-                                });
-                              });
-                              _player.onDurationChanged
-                                  .listen((Duration duration) {
-                                setState(() {
-                                  completeTime =
-                                      duration.toString().split(".")[0];
-                                });
-                              });
-                              if (isPlaying == false) {
-                                await _player.play(audioUrl);
-
-                                setState(() {
-                                  isPlaying = true;
-                                });
-                              } else {
-                                await _player.pause();
-
-                                setState(() {
-                                  isPlaying = false;
-                                });
-                              }
-                            },
-                            child: isPlaying
-                                ? Icon(
-                                    Icons.pause,
-                                    color: Colors.white,
-                                    size: 24,
-                                  )
-                                : Icon(
-                                    Icons.play_arrow,
-                                    color: Colors.white,
-                                    size: 24,
-                                  ),
-                          ),
-                          SizedBox(
-                            width: 5.0,
-                          ),
-                          Text(
-                            currentTime,
-                            style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                                fontSize: 14.0),
-                          ),
-                          Text(
-                            " | ",
-                            style:
-                                TextStyle(color: Colors.white, fontSize: 14.0),
-                          ),
-                          Text(
-                            completeTime,
-                            style: TextStyle(
-                                fontWeight: FontWeight.w300,
-                                color: Colors.white,
-                                fontSize: 14.0),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  margin: EdgeInsets.only(bottom: 50, left: 12, right: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(40),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
+        return AudioPlay(audioUrl);
       },
       transitionBuilder: (_, anim, __, child) {
         return SlideTransition(

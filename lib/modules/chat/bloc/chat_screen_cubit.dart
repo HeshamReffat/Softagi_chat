@@ -30,17 +30,17 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
   Map myData = {};
   Map checkChat = {};
   bool startRec = false;
-  Recording _recording = new Recording();
+  Recording recording = Recording();
   bool _isRecording = false;
-  String currentTime = "00:00";
-  String completeTime = "00:00";
   AudioPlayer player = AudioPlayer();
   TextEditingController _controller = new TextEditingController();
   File image;
   int newMessage = 0;
   List<DocumentSnapshot> messagesList = [];
   List<DocumentSnapshot> messagesList2 = [];
-  DocumentSnapshot listEnd;
+  DocumentSnapshot lastMessage;
+  bool remainingMessage = true;
+  bool isLoading = false;
 
   static ChatScreenCubit get(context) => BlocProvider.of(context);
 
@@ -236,6 +236,13 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
         } else {
           setNewMessage(newMessage);
         }
+        if (userData['chattingWith'] == FirebaseAuth.instance.currentUser.uid)
+          messagesList.forEach((msg) {
+            if (msg['seen'] == 'false')
+              msg.reference.update({
+                'seen': 'true',
+              });
+          });
         print(newMessage);
         //emit(UpdateUserLastMessage());
       });
@@ -272,7 +279,9 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
           'id': FirebaseAuth.instance.currentUser.uid,
           'time': Timestamp.now(),
           'last_messageTime': DateTime.now().millisecondsSinceEpoch,
-          'last_path': 'audio',
+          'last_path': Uri.file(audio.path).pathSegments.last,
+          'type': 'audio',
+          'seen': 'false',
         }).then((value) {
           print('my Audio');
           FirebaseFirestore.instance
@@ -286,7 +295,9 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
             'id': FirebaseAuth.instance.currentUser.uid,
             'time': Timestamp.now(),
             'last_messageTime': DateTime.now().millisecondsSinceEpoch,
-            'last_path': 'audio',
+            'last_path': Uri.file(audio.path).pathSegments.last,
+            'type': 'audio',
+            'seen': 'false',
           }).then((value) {
             updateLastMessage('Audio');
             if (userData['chattingWith'] ==
@@ -312,18 +323,6 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
     emit(ChangeStartRec());
   }
 
-  void audioTime() {
-    player.onAudioPositionChanged.listen((Duration duration) {
-      currentTime = duration.toString().split(".")[0];
-      emit(CurrentTime());
-    });
-
-    player.onDurationChanged.listen((Duration duration) {
-      completeTime = duration.toString().split(".")[0];
-      emit(TotalTime());
-    });
-  }
-
   void startRecording() async {
     if (startRec == false) {
       await Permission.storage.request();
@@ -344,7 +343,7 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
             await AudioRecorder.start();
           }
           bool isRecording = await AudioRecorder.isRecording;
-          _recording = new Recording(duration: new Duration(), path: "");
+          recording = new Recording(duration: new Duration(), path: "");
           _isRecording = isRecording;
           changeStartRec();
           emit(AudioRecSuccess());
@@ -363,11 +362,33 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
       uploadAudioFile(file);
 
       print("  File length: ${await file.length()}");
-      _recording = recording;
+      recording = recording;
       _isRecording = isRecording;
       changeStartRec();
       emit(AudioRecFinish());
       _controller.text = recording.path;
+      if (startRec == false) {
+        _controller.clear();
+      }
+    }
+  }
+
+  void cancelRecord() async {
+    var recording = await AudioRecorder.stop();
+    print("Stop recording: ${recording.path}");
+    bool isRecording = await AudioRecorder.isRecording;
+    File file = localFileSystem.file(recording.path);
+
+    //uploadAudioFile(file);
+
+    print("  File length: ${await file.length()}");
+    recording = recording;
+    _isRecording = isRecording;
+    changeStartRec();
+    emit(AudioRecFinish());
+    _controller.text = recording.path;
+    if (startRec == false) {
+      _controller.clear();
     }
   }
 
@@ -385,6 +406,7 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
       'last_messageTime': DateTime.now().millisecondsSinceEpoch,
       'last_path': 'notfound',
       'seen': 'false',
+      'type': 'text',
     }).then((value) {
       if (userData['chattingWith'] == FirebaseAuth.instance.currentUser.uid) {
         newMessage = 0;
@@ -407,8 +429,11 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
         'last_messageTime': DateTime.now().millisecondsSinceEpoch,
         'last_path': 'notfound',
         'seen': 'false',
+        'type': 'text',
       }).then((value) {
         updateLastMessage(message);
+        messagesList2.clear();
+        remainingMessage = true;
         emit(SendUserMessage());
         print('usermessages');
       }).catchError((error) {
@@ -419,9 +444,14 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
     });
   }
 
-  int docLimit = 10;
+  int docLimit = 12;
 
   getMessages() {
+    if (messagesList.length > 0) {
+      isLoading = false;
+    } else {
+      isLoading = true;
+    }
     FirebaseFirestore.instance
         .collection('users')
         .doc(FirebaseAuth.instance.currentUser.uid)
@@ -435,7 +465,10 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
       //print('list =====> ${event.docs.length}');
       chatCreated();
       messagesList = event.docs;
-      listEnd = messagesList[messagesList.length - 1];
+      if (messagesList.length > 0) {
+        lastMessage = messagesList[messagesList.length - 1];
+        isLoading = false;
+      }
       emit(GetMessages());
       // if (userData['chattingWith'] == FirebaseAuth.instance.currentUser.uid)
       //   messagesList.forEach((msg) {
@@ -455,51 +488,55 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
 
   void scroll(context) {
     scrollController.addListener(() {
-      double maxScroll = scrollController.position.maxScrollExtent;
-      double currentScroll = scrollController.position.pixels;
-      double delta = MediaQuery.of(context).size.height * 0.20;
-      if (maxScroll - currentScroll <= delta) {
-        if (messagesList2.length == docLimit) {
-          print('no more');
-        } else {
-          getMoreMessages();
-          emit(ScrollListen());
-        }
+      if (scrollController.offset >=
+              scrollController.position.maxScrollExtent &&
+          !scrollController.position.outOfRange) {
+        getMoreMessages();
+        emit(ScrollListen());
       }
     });
   }
 
-  getMoreMessages() async{
+  getMoreMessages() async {
     print('more messages');
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(FirebaseAuth.instance.currentUser.uid)
-        .collection('chats')
-        .doc(userData['id'])
-        .collection('messages')
-        .orderBy('time', descending: true)
-        .startAfterDocument(listEnd)
-        .limit(docLimit)
-        .get()
-        .then((event) {
-      messagesList2 = event.docs;
-      //print('list =====> ${event.docs.length}');
-      listEnd = messagesList2[messagesList2.length - 1];
-      messagesList.addAll(messagesList2);
-
-      emit(GetMoreMessages());
-      // if (userData['chattingWith'] == FirebaseAuth.instance.currentUser.uid)
-      //   messagesList.forEach((msg) {
-      //     if (msg['seen'] == 'false')
-      //       msg.reference.update({
-      //         'seen': 'true',
-      //       });
-      //   });
-      // updateMessagesSeen();
-      //print(messagesList.first['time']);
-      //newMessage = 0;
-      //print(image.path);
-    });
+    if (remainingMessage) {
+      isLoading = true;
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(FirebaseAuth.instance.currentUser.uid)
+          .collection('chats')
+          .doc(userData['id'])
+          .collection('messages')
+          .orderBy('time', descending: true)
+          .startAfterDocument(lastMessage)
+          .limit(docLimit)
+          .get()
+          .then((event) {
+        messagesList2 = event.docs;
+        //print('list =====> ${event.docs.length}');
+        lastMessage = messagesList2.last;
+        messagesList.addAll(messagesList2);
+        if (messagesList2.length < docLimit) {
+          remainingMessage = false;
+        }
+        isLoading = false;
+        emit(GetMoreMessages());
+        if (userData['chattingWith'] == FirebaseAuth.instance.currentUser.uid)
+          messagesList.forEach((msg) {
+            if (msg['seen'] == 'false')
+              msg.reference.update({
+                'seen': 'true',
+              });
+          });
+        // updateMessagesSeen();
+        //print(messagesList.first['time']);
+        //newMessage = 0;
+        //print(image.path);
+      });
+    } else {
+      print('noMore');
+      Fluttertoast.showToast(msg: 'No more Messages');
+    }
   }
 
   void updateInfoChat() {
@@ -600,7 +637,9 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
           'id': FirebaseAuth.instance.currentUser.uid,
           'time': Timestamp.now(),
           'last_messageTime': DateTime.now().millisecondsSinceEpoch,
-          'last_path': 'image' //Uri.file(image.path).pathSegments.last,
+          'last_path': Uri.file(image.path).pathSegments.last,
+          'type': 'image',
+          'seen': 'false',
         }).then((value) {
           print('my image');
           FirebaseFirestore.instance
@@ -614,7 +653,9 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
             'id': FirebaseAuth.instance.currentUser.uid,
             'time': Timestamp.now(),
             'last_messageTime': DateTime.now().millisecondsSinceEpoch,
-            'last_path': 'image' //Uri.file(image.path).pathSegments.last,
+            'last_path': Uri.file(image.path).pathSegments.last,
+            'type': 'image',
+            'seen': 'false',
           }).then((value) {
             updateLastMessage('Photo');
             if (userData['chattingWith'] ==

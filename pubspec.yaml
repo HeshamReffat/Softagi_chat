@@ -53,6 +53,7 @@ dependencies:
   timeago: ^2.0.30
   paginate_firestore: ^0.2.2
   audioplayers: ^0.17.3
+  pull_to_refresh: ^1.6.4
   dio: ^3.0.10
 
 flutter_icons:

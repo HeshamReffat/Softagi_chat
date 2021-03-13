@@ -34,3 +34,8 @@ Future<bool> saveCreateProfile(String created) async{
 }
 
 String getCreateProfile() => preferences.getString('Created');
+Future<bool> saveAppTheme(String theme) async{
+  return await preferences.setString('theme', theme);
+}
+
+String getAppTheme() => preferences.getString('theme');

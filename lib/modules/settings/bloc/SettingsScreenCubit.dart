@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:softagi_chat/modules/settings/bloc/SettingsScreenStates.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
+import 'package:softagi_chat/shared/Prefrences.dart';
 
 class SettingsScreenCubit extends Cubit<SettingsScreenStates> {
   SettingsScreenCubit() : super(SettingsScreenInit());

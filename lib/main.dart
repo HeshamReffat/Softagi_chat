@@ -31,7 +31,6 @@ class MyApp extends StatefulWidget {
   Widget screen;
 
   MyApp(this.screen);
-
   @override
   _MyAppState createState() => _MyAppState();
 }
@@ -39,6 +38,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   AppLifecycleState _lastLifecyleState;
   var profile = '';
+  var appTheme = getAppTheme();
 
   @override
   void initState() {
