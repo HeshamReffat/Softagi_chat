@@ -1,27 +1,46 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:softagi_chat/modules/chat/bloc/chat_screen_states.dart';
 import 'package:softagi_chat/shared/Prefrences.dart';
+import 'package:audio_recorder/audio_recorder.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io' as io;
+import 'package:file/local.dart';
 
 class ChatScreenCubit extends Cubit<ChatScreenStates> {
-  ChatScreenCubit() : super(ChatScreenInit());
+  ChatScreenCubit({localFileSystem})
+      : this.localFileSystem = localFileSystem ?? LocalFileSystem(),
+        super(ChatScreenInit());
+
+  LocalFileSystem localFileSystem;
   String userId;
   Map userData = {};
   Map myData = {};
   Map checkChat = {};
+  bool startRec = false;
+  Recording recording = Recording();
+  bool _isRecording = false;
+  AudioPlayer player = AudioPlayer();
+  TextEditingController _controller = new TextEditingController();
   File image;
   int newMessage = 0;
-  List messagesList = [];
+  List<DocumentSnapshot> messagesList = [];
+  List<DocumentSnapshot> messagesList2 = [];
+  DocumentSnapshot lastMessage;
+  bool remainingMessage = true;
+  bool isLoading = false;
 
   static ChatScreenCubit get(context) => BlocProvider.of(context);
 
@@ -75,7 +94,7 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
         "title": "${myData['first_name']} ${myData['last_name']}",
         "body": "$text",
         "image": '$image',
-        "sound": "default"
+        "sound": "default",
       },
       "android": {
         "priority": "HIGH",
@@ -93,7 +112,8 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
 
   void firebaseMessage() {
     final fbm = FirebaseMessaging();
-    fbm.requestNotificationPermissions(const IosNotificationSettings(sound: true));
+    fbm.requestNotificationPermissions(
+        const IosNotificationSettings(sound: true, alert: true, badge: true));
     fbm.configure(onMessage: (msg) {
       print('$msg this is it');
       return;
@@ -216,6 +236,13 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
         } else {
           setNewMessage(newMessage);
         }
+        if (userData['chattingWith'] == FirebaseAuth.instance.currentUser.uid)
+          messagesList.forEach((msg) {
+            if (msg['seen'] == 'false')
+              msg.reference.update({
+                'seen': 'true',
+              });
+          });
         print(newMessage);
         //emit(UpdateUserLastMessage());
       });
@@ -233,6 +260,138 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
     });
   }
 
+  uploadAudioFile(File audio) {
+    firebase_storage.FirebaseStorage.instance
+        .ref()
+        .child('users/${Uri.file(audio.path).pathSegments.last}')
+        .putFile(audio)
+        .onComplete
+        .then((value) {
+      value.ref.getDownloadURL().then((audioValue) {
+        FirebaseFirestore.instance
+            .collection('users')
+            .doc(FirebaseAuth.instance.currentUser.uid)
+            .collection('chats')
+            .doc(userData['id'])
+            .collection('messages')
+            .add({
+          'message': audioValue.toString(),
+          'id': FirebaseAuth.instance.currentUser.uid,
+          'time': Timestamp.now(),
+          'last_messageTime': DateTime.now().millisecondsSinceEpoch,
+          'last_path': Uri.file(audio.path).pathSegments.last,
+          'type': 'audio',
+          'seen': 'false',
+        }).then((value) {
+          print('my Audio');
+          FirebaseFirestore.instance
+              .collection('users')
+              .doc(userData['id'])
+              .collection('chats')
+              .doc(FirebaseAuth.instance.currentUser.uid)
+              .collection('messages')
+              .add({
+            'message': audioValue.toString(),
+            'id': FirebaseAuth.instance.currentUser.uid,
+            'time': Timestamp.now(),
+            'last_messageTime': DateTime.now().millisecondsSinceEpoch,
+            'last_path': Uri.file(audio.path).pathSegments.last,
+            'type': 'audio',
+            'seen': 'false',
+          }).then((value) {
+            updateLastMessage('Audio');
+            if (userData['chattingWith'] ==
+                FirebaseAuth.instance.currentUser.uid) {
+              newMessage = 0;
+            } else {
+              newMessage++;
+            }
+            print('user Audio');
+            emit(AudioUploadSuccess());
+          }).catchError((error) {
+            print(error.toString());
+          });
+        }).catchError((error) {
+          print(error.toString());
+        });
+      });
+    });
+  }
+
+  changeStartRec() {
+    startRec = !startRec;
+    emit(ChangeStartRec());
+  }
+
+  void startRecording() async {
+    if (startRec == false) {
+      await Permission.storage.request();
+      await Permission.microphone.request();
+      try {
+        if (await AudioRecorder.hasPermissions) {
+          if (_controller.text != null && _controller.text != "") {
+            String path = _controller.text;
+            if (!_controller.text.contains('/')) {
+              io.Directory appDocDirectory =
+                  await getApplicationDocumentsDirectory();
+              path = appDocDirectory.path + '/' + _controller.text;
+            }
+            print("Start recording: $path");
+            await AudioRecorder.start(
+                path: path, audioOutputFormat: AudioOutputFormat.AAC);
+          } else {
+            await AudioRecorder.start();
+          }
+          bool isRecording = await AudioRecorder.isRecording;
+          recording = new Recording(duration: new Duration(), path: "");
+          _isRecording = isRecording;
+          changeStartRec();
+          emit(AudioRecSuccess());
+        } else {
+          Fluttertoast.showToast(msg: "You must accept permissions");
+        }
+      } catch (e) {
+        print(e);
+      }
+    } else {
+      var recording = await AudioRecorder.stop();
+      print("Stop recording: ${recording.path}");
+      bool isRecording = await AudioRecorder.isRecording;
+      File file = localFileSystem.file(recording.path);
+
+      uploadAudioFile(file);
+
+      print("  File length: ${await file.length()}");
+      recording = recording;
+      _isRecording = isRecording;
+      changeStartRec();
+      emit(AudioRecFinish());
+      _controller.text = recording.path;
+      if (startRec == false) {
+        _controller.clear();
+      }
+    }
+  }
+
+  void cancelRecord() async {
+    var recording = await AudioRecorder.stop();
+    print("Stop recording: ${recording.path}");
+    bool isRecording = await AudioRecorder.isRecording;
+    File file = localFileSystem.file(recording.path);
+
+    //uploadAudioFile(file);
+
+    print("  File length: ${await file.length()}");
+    recording = recording;
+    _isRecording = isRecording;
+    changeStartRec();
+    emit(AudioRecFinish());
+    _controller.text = recording.path;
+    if (startRec == false) {
+      _controller.clear();
+    }
+  }
+
   void sendMessage(String message) {
     FirebaseFirestore.instance
         .collection('users')
@@ -247,6 +406,7 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
       'last_messageTime': DateTime.now().millisecondsSinceEpoch,
       'last_path': 'notfound',
       'seen': 'false',
+      'type': 'text',
     }).then((value) {
       if (userData['chattingWith'] == FirebaseAuth.instance.currentUser.uid) {
         newMessage = 0;
@@ -269,8 +429,11 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
         'last_messageTime': DateTime.now().millisecondsSinceEpoch,
         'last_path': 'notfound',
         'seen': 'false',
+        'type': 'text',
       }).then((value) {
         updateLastMessage(message);
+        messagesList2.clear();
+        remainingMessage = true;
         emit(SendUserMessage());
         print('usermessages');
       }).catchError((error) {
@@ -281,7 +444,14 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
     });
   }
 
-  void getMessages() {
+  int docLimit = 12;
+
+  getMessages() {
+    if (messagesList.length > 0) {
+      isLoading = false;
+    } else {
+      isLoading = true;
+    }
     FirebaseFirestore.instance
         .collection('users')
         .doc(FirebaseAuth.instance.currentUser.uid)
@@ -289,11 +459,16 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
         .doc(userData['id'])
         .collection('messages')
         .orderBy('time', descending: true)
+        .limit(docLimit)
         .snapshots()
         .listen((event) {
       //print('list =====> ${event.docs.length}');
       chatCreated();
       messagesList = event.docs;
+      if (messagesList.length > 0) {
+        lastMessage = messagesList[messagesList.length - 1];
+        isLoading = false;
+      }
       emit(GetMessages());
       // if (userData['chattingWith'] == FirebaseAuth.instance.currentUser.uid)
       //   messagesList.forEach((msg) {
@@ -307,6 +482,61 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
       //newMessage = 0;
       //print(image.path);
     });
+  }
+
+  ScrollController scrollController = ScrollController();
+
+  void scroll(context) {
+    scrollController.addListener(() {
+      if (scrollController.offset >=
+              scrollController.position.maxScrollExtent &&
+          !scrollController.position.outOfRange) {
+        getMoreMessages();
+        emit(ScrollListen());
+      }
+    });
+  }
+
+  getMoreMessages() async {
+    print('more messages');
+    if (remainingMessage) {
+      isLoading = true;
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(FirebaseAuth.instance.currentUser.uid)
+          .collection('chats')
+          .doc(userData['id'])
+          .collection('messages')
+          .orderBy('time', descending: true)
+          .startAfterDocument(lastMessage)
+          .limit(docLimit)
+          .get()
+          .then((event) {
+        messagesList2 = event.docs;
+        //print('list =====> ${event.docs.length}');
+        lastMessage = messagesList2.last;
+        messagesList.addAll(messagesList2);
+        if (messagesList2.length < docLimit) {
+          remainingMessage = false;
+        }
+        isLoading = false;
+        emit(GetMoreMessages());
+        if (userData['chattingWith'] == FirebaseAuth.instance.currentUser.uid)
+          messagesList.forEach((msg) {
+            if (msg['seen'] == 'false')
+              msg.reference.update({
+                'seen': 'true',
+              });
+          });
+        // updateMessagesSeen();
+        //print(messagesList.first['time']);
+        //newMessage = 0;
+        //print(image.path);
+      });
+    } else {
+      print('noMore');
+      Fluttertoast.showToast(msg: 'No more Messages');
+    }
   }
 
   void updateInfoChat() {
@@ -408,6 +638,8 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
           'time': Timestamp.now(),
           'last_messageTime': DateTime.now().millisecondsSinceEpoch,
           'last_path': Uri.file(image.path).pathSegments.last,
+          'type': 'image',
+          'seen': 'false',
         }).then((value) {
           print('my image');
           FirebaseFirestore.instance
@@ -422,6 +654,8 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
             'time': Timestamp.now(),
             'last_messageTime': DateTime.now().millisecondsSinceEpoch,
             'last_path': Uri.file(image.path).pathSegments.last,
+            'type': 'image',
+            'seen': 'false',
           }).then((value) {
             updateLastMessage('Photo');
             if (userData['chattingWith'] ==
@@ -430,7 +664,7 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
             } else {
               newMessage++;
             }
-            print('usermessages');
+            print('userimage');
             emit(ImageUploadSuccess());
           }).catchError((error) {
             print(error.toString());

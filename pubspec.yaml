@@ -44,11 +44,16 @@ dependencies:
   permission_handler: ^5.0.1+1
   cached_network_image: ^2.5.0
   flutter_local_notifications: ^4.0.0
-  rxdart: ^0.25.0
   intl: ^0.16.1
   flutter_bloc: ^6.1.1
   connectivity: ^2.0.2
   contacts_service: ^0.4.6
+  audio_recorder: ^1.0.2
+  path_provider: ^1.6.27
+  timeago: ^2.0.30
+  paginate_firestore: ^0.2.2
+  audioplayers: ^0.17.3
+  pull_to_refresh: ^1.6.4
   dio: ^3.0.10
 
 flutter_icons:

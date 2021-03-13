@@ -1,3 +1,4 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -6,7 +7,9 @@ import 'package:intl/intl.dart';
 import 'package:softagi_chat/modules/chat/bloc/chat_screen_cubit.dart';
 import 'package:softagi_chat/modules/chat/bloc/chat_screen_states.dart';
 import 'package:softagi_chat/modules/home/home_screen.dart';
+import 'package:softagi_chat/modules/playAudio.dart';
 import 'package:softagi_chat/shared/Prefrences.dart';
+import 'package:timeago/timeago.dart' as timeago;
 import 'package:softagi_chat/shared/components.dart';
 
 class ChatScreen extends StatelessWidget {
@@ -15,18 +18,24 @@ class ChatScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context)=> ChatScreenCubit()..getUserId()..getRealTimeUserData()..getRealTimeMyData()..firebaseMessage(),
-      child: BlocConsumer<ChatScreenCubit,ChatScreenStates>(
-        listener: (ctx,state){
-        },
-        builder: (ctx,state){
+      create: (context) => ChatScreenCubit()
+        ..getUserId()
+        ..getRealTimeUserData()
+        ..getRealTimeMyData()
+        ..firebaseMessage()
+        ..scroll(context),
+      child: BlocConsumer<ChatScreenCubit, ChatScreenStates>(
+        listener: (ctx, state) {},
+        builder: (ctx, state) {
           var bloc = ChatScreenCubit.get(ctx);
           return WillPopScope(
             // ignore: missing_return
-            onWillPop: () {
+            onWillPop: () async {
               bloc.updateStatus('online');
+              bloc.scrollController.dispose();
               bloc.updateChattingWith('');
               saveUserItemId('');
+              await AudioPlayer().release();
               navigateAndFinish(context, HomeScreen());
             },
             child: Scaffold(
@@ -96,18 +105,38 @@ class ChatScreen extends StatelessWidget {
                         if (bloc.messagesList.length > 0)
                           ListView.builder(
                             reverse: true,
+                            controller: bloc.scrollController,
                             itemBuilder: (context, index) {
                               if (bloc.messagesList[index]['id'] ==
                                   FirebaseAuth.instance.currentUser.uid)
-                                return myItem(bloc.messagesList[index],bloc,context);
+                                return myItem(
+                                    bloc.messagesList[index], bloc, context);
                               else
-                                return userItem(bloc.messagesList[index],bloc,context);
+                                return userItem(
+                                    bloc.messagesList[index], bloc, context);
                             },
                             itemCount: bloc.messagesList.length,
                           ),
-                        if (bloc.messagesList.length == 0)
-                          Center(
-                            child: Text('No messages yet'),
+                        if (bloc.isLoading == true)
+                          Container(
+                            width: MediaQuery.of(context).size.width,
+                            padding: EdgeInsets.all(5),
+                            color: Colors.green,
+                            child: bloc.messagesList.length == 0
+                                ? Text(
+                                    'No messages yet...',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  )
+                                : Text(
+                                    'Loading...',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                           ),
                       ],
                     ),
@@ -145,7 +174,8 @@ class ChatScreen extends StatelessWidget {
                                     maxLines: null,
                                     onChanged: (text) {
                                       if (text.length > 0) {
-                                        if (bloc.myData['action'] != 'typing...')
+                                        if (bloc.myData['action'] !=
+                                            'typing...')
                                           bloc.updateStatus('typing...');
                                       }
                                       if (text.isEmpty) {
@@ -155,10 +185,32 @@ class ChatScreen extends StatelessWidget {
                                   ),
                                 ),
                                 InkWell(
+                                  onTap: () {
+                                    bloc.pickImage();
+                                  },
+                                  child: Icon(Icons.image),
+                                ),
+                                SizedBox(
+                                  width: 3.0,
+                                ),
+                                if (bloc.startRec)
+                                  InkWell(
                                     onTap: () {
-                                      bloc.pickImage();
+                                      bloc.cancelRecord();
                                     },
-                                    child: Icon(Icons.image)),
+                                    child: Icon(Icons.clear),
+                                  ),
+                                SizedBox(
+                                  width: 3.0,
+                                ),
+                                InkWell(
+                                  onTap: () async {
+                                    bloc.startRecording();
+                                  },
+                                  child: bloc.startRec
+                                      ? Icon(Icons.stop)
+                                      : Icon(Icons.mic),
+                                ),
                               ],
                             ),
                           ),
@@ -170,18 +222,18 @@ class ChatScreen extends StatelessWidget {
                           onTap: messageController.text.isEmpty
                               ? null
                               : () {
-                            bloc.sendMessage(messageController.text);
-                            bloc.updateStatus('online');
-                            bloc.sendNotification(messageController.text);
-                            messageController.clear();
-                            if (bloc.checkChat != null) {
-                              bloc.checkChat['chatCreated'] == 'true'
-                                  ? bloc.updateInfoChat()
-                                  : bloc.createChat();
-                            } else {
-                              bloc.createChat();
-                            }
-                          },
+                                  bloc.sendMessage(messageController.text);
+                                  bloc.updateStatus('online');
+                                  bloc.sendNotification(messageController.text);
+                                  messageController.clear();
+                                  if (bloc.checkChat != null) {
+                                    bloc.checkChat['chatCreated'] == 'true'
+                                        ? bloc.updateInfoChat()
+                                        : bloc.createChat();
+                                  } else {
+                                    bloc.createChat();
+                                  }
+                                },
                           child: CircleAvatar(
                             radius: 25,
                             child: Icon(Icons.send),
@@ -199,7 +251,7 @@ class ChatScreen extends StatelessWidget {
     );
   }
 
-  Widget userItem(item,bloc,context) {
+  Widget userItem(item, bloc, context) {
     final date = DateFormat('MMM d hh:mm a');
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -242,8 +294,11 @@ class ChatScreen extends StatelessWidget {
               child: item['last_path'] != 'notfound'
                   ? InkWell(
                       onLongPress: () {
-                        showDialog(
-                            imageUrl: item['message'], path: item['last_path'],context: context,bloc: bloc);
+                        showImageDialog(
+                            imageUrl: item['message'],
+                            path: item['last_path'],
+                            context: context,
+                            bloc: bloc);
                       },
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -279,14 +334,15 @@ class ChatScreen extends StatelessWidget {
                               color: Colors.white,
                             ),
                           ),
-                          SizedBox(height: 5.0,),
+                          SizedBox(
+                            height: 5.0,
+                          ),
                           Text(
                             date.format(
                               DateTime.fromMillisecondsSinceEpoch(
                                   item['last_messageTime']),
                             ),
-                            style:
-                                TextStyle(color: Colors.white, fontSize: 8),
+                            style: TextStyle(color: Colors.white, fontSize: 8),
                           ),
                         ],
                       ),
@@ -298,7 +354,7 @@ class ChatScreen extends StatelessWidget {
     );
   }
 
-  Widget myItem(item,bloc,context) {
+  Widget myItem(item, bloc, context) {
     final date = DateFormat('MMM d hh:mm a');
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -332,11 +388,14 @@ class ChatScreen extends StatelessWidget {
               // padding: EdgeInsets.all(
               //   10.0,
               // ),
-              child: item['last_path'] != 'notfound'
+              child: item['type'] == 'image'
                   ? InkWell(
                       onLongPress: () {
-                        showDialog(
-                            imageUrl: item['message'], path: item['last_path'],context: context,bloc: bloc);
+                        showImageDialog(
+                            imageUrl: item['message'],
+                            path: item['last_path'],
+                            context: context,
+                            bloc: bloc);
                         // showPopupMenu(Offset(MediaQuery.of(context).size.width +50,MediaQuery.of(context).size.height -150));
                       },
                       child: Column(
@@ -366,20 +425,37 @@ class ChatScreen extends StatelessWidget {
                       padding: const EdgeInsets.all(10.0),
                       child: Column(
                         children: [
-                          Text(
-                            '${item['message']}',
-                            style: TextStyle(
-                              color: Colors.white,
+                          if (item['type'] == 'text')
+                            Text(
+                              '${item['message']}',
+                              style: TextStyle(
+                                color: Colors.white,
+                              ),
                             ),
+                          if (item['type'] == 'audio')
+                            MaterialButton(
+                              onPressed: () {
+                                audioDialog(
+                                    audioUrl: item['message'],
+                                    context: context,
+                                    bloc: bloc);
+                              },
+                              child: Icon(
+                                Icons.play_arrow,
+                                color: Colors.white,
+                              ),
+                            ),
+                          SizedBox(
+                            height: 5.0,
                           ),
-                          SizedBox(height: 5.0,),
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
                                 Icons.check_rounded,
                                 size: 15.0,
-                                color: bloc.userData['chattingWith'] == FirebaseAuth.instance.currentUser.uid
+                                color: item['seen'] ==
+                                        'true'
                                     ? Colors.blue
                                     : Colors.white,
                               ),
@@ -413,22 +489,7 @@ class ChatScreen extends StatelessWidget {
     );
   }
 
-  // showPopupMenu(Offset offset) async {
-  //   double left = offset.dx;
-  //   double top = offset.dy;
-  //   await showMenu(
-  //     context: context,
-  //     position: RelativeRect.fromLTRB(left, top, 0, 0),
-  //     items: [
-  //       PopupMenuItem(
-  //         child: Text("View"),
-  //       ),
-  //     ],
-  //     elevation: 8.0,
-  //   );
-  // }
-
-  void showDialog({imageUrl, path,context,bloc}) {
+  void showImageDialog({imageUrl, path, context, bloc}) {
     showGeneralDialog(
       barrierLabel: "Barrier",
       barrierDismissible: true,
@@ -472,32 +533,27 @@ class ChatScreen extends StatelessWidget {
       },
     );
   }
-  // void updateMessagesSeen() async{
-  //   CollectionReference ref =  FirebaseFirestore.instance
-  //       .collection('users')
-  //       .doc(FirebaseAuth.instance.currentUser.uid)
-  //       .collection('chats')
-  //       .doc(widget.userId)
-  //       .collection('messages');
-  //   QuerySnapshot messages = await ref.get();
-  //   messages.docs.forEach((element) {
-  //     //messages = element.data();
-  //       element.reference.update({
-  //         'seen': 'true',
-  //       });
-  //   });
-  // }
-  // void requestPersmission() async {
-  //   var status = await Permission.storage.status;
-  //   if (status.isUndetermined) {
-  //     // You can request multiple permissions at once.
-  //     Map<Permission, PermissionStatus> statuses = await [
-  //       Permission.storage,
-  //       Permission.camera,
-  //     ].request();
-  //     print(statuses[
-  //     Permission.storage]); // it should print PermissionStatus.granted
-  //   }
-  // }
 
+  void audioDialog({
+    audioUrl,
+    context,
+    bloc,
+  }) {
+    showGeneralDialog(
+      barrierLabel: "Barrier",
+      barrierDismissible: false,
+      barrierColor: Colors.black.withOpacity(0.5),
+      transitionDuration: Duration(milliseconds: 700),
+      context: context,
+      pageBuilder: (_, __, ___) {
+        return AudioPlay(audioUrl);
+      },
+      transitionBuilder: (_, anim, __, child) {
+        return SlideTransition(
+          position: Tween(begin: Offset(0, 1), end: Offset(0, 0)).animate(anim),
+          child: child,
+        );
+      },
+    );
+  }
 }
