@@ -203,6 +203,16 @@ class ChatScreen extends StatelessWidget {
                                 SizedBox(
                                   width: 3.0,
                                 ),
+                                if (bloc.startRec)
+                                  InkWell(
+                                    onTap: () {
+                                      bloc.cancelRecord();
+                                    },
+                                    child: Icon(Icons.clear),
+                                  ),
+                                SizedBox(
+                                  width: 3.0,
+                                ),
                                 InkWell(
                                   onTap: () async {
                                     bloc.startRecording();
@@ -426,10 +436,15 @@ class ChatScreen extends StatelessWidget {
                       child: Column(
                         children: [
                           if (item['type'] == 'text')
-                            Text(
-                              '${item['message']}',
-                              style: TextStyle(
-                                color: Colors.white,
+                            InkWell(
+                              onTap:(){
+                                bloc.deleteMessage(item['docID']);
+                              },
+                              child: Text(
+                                '${item['message']}',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
                           if (item['type'] == 'audio')

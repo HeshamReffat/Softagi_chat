@@ -30,10 +30,12 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
   Map myData = {};
   Map checkChat = {};
   bool startRec = false;
+  int docLimit = 12;
   Recording recording = Recording();
   bool _isRecording = false;
   AudioPlayer player = AudioPlayer();
   TextEditingController _controller = new TextEditingController();
+  ScrollController scrollController = ScrollController();
   File image;
   int newMessage = 0;
   List<DocumentSnapshot> messagesList = [];
@@ -391,6 +393,14 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
       _controller.clear();
     }
   }
+  void deleteMessage(id){
+    FirebaseFirestore.instance
+        .collection('users')
+        .doc(FirebaseAuth.instance.currentUser.uid)
+        .collection('chats')
+        .doc(userData['id'])
+        .collection('messages').doc(id).delete();
+  }
 
   void sendMessage(String message) {
     FirebaseFirestore.instance
@@ -405,9 +415,17 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
       'time': Timestamp.now(),
       'last_messageTime': DateTime.now().millisecondsSinceEpoch,
       'last_path': 'notfound',
+      'docID':'',
       'seen': 'false',
       'type': 'text',
     }).then((value) {
+      FirebaseFirestore.instance
+          .collection('users')
+          .doc(FirebaseAuth.instance.currentUser.uid)
+          .collection('chats')
+          .doc(userData['id'])
+          .collection('messages')
+          .doc(value.id).update({'docID':value.id});
       if (userData['chattingWith'] == FirebaseAuth.instance.currentUser.uid) {
         newMessage = 0;
       } else {
@@ -425,14 +443,22 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
         'message': message,
         'id': FirebaseAuth.instance.currentUser.uid,
         // Change message time stamp
+        'docID':'',
         'time': Timestamp.now(),
         'last_messageTime': DateTime.now().millisecondsSinceEpoch,
         'last_path': 'notfound',
         'seen': 'false',
         'type': 'text',
       }).then((value) {
+        FirebaseFirestore.instance
+            .collection('users')
+            .doc(userData['id'])
+            .collection('chats')
+            .doc(FirebaseAuth.instance.currentUser.uid)
+            .collection('messages')
+            .doc(value.id).update({'docID':value.id});
         updateLastMessage(message);
-        messagesList2.clear();
+        //messagesList2.clear();
         remainingMessage = true;
         emit(SendUserMessage());
         print('usermessages');
@@ -443,8 +469,6 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
       print(error.toString());
     });
   }
-
-  int docLimit = 12;
 
   getMessages() {
     if (messagesList.length > 0) {
@@ -484,7 +508,7 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
     });
   }
 
-  ScrollController scrollController = ScrollController();
+
 
   void scroll(context) {
     scrollController.addListener(() {

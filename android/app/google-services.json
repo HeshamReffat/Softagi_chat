@@ -14,14 +14,6 @@
       },
       "oauth_client": [
         {
-          "client_id": "1081298622419-lv1ntnrqttbbu54ses9dfeq2r0al4pad.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.alex.softagi_chat",
-            "certificate_hash": "df8e93c4a60829071f40b61007d078c6a5cae4a9"
-          }
-        },
-        {
           "client_id": "1081298622419-s0ub3t1jrhbiknsdl073gspp8h7u3bmv.apps.googleusercontent.com",
           "client_type": 3
         }
