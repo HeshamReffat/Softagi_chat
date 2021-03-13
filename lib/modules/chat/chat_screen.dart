@@ -10,7 +10,6 @@ import 'package:softagi_chat/modules/chat/bloc/chat_screen_states.dart';
 import 'package:softagi_chat/modules/home/home_screen.dart';
 import 'package:softagi_chat/modules/playAudio.dart';
 import 'package:softagi_chat/shared/Prefrences.dart';
-import 'package:timeago/timeago.dart' as timeago;
 import 'package:softagi_chat/shared/components.dart';
 
 class ChatScreen extends StatelessWidget {
@@ -293,15 +292,16 @@ class ChatScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              child: item['last_path'] != 'notfound'
-                  ? InkWell(
-                      onLongPress: () {
-                        showImageDialog(
-                            imageUrl: item['message'],
-                            path: item['last_path'],
-                            context: context,
-                            bloc: bloc);
-                      },
+              child:item['type'] == 'image'
+                  ? GestureDetector(
+                onTapUp: (TapUpDetails details) {
+                  imagePopUP(
+                      bloc: bloc,
+                      context: context,
+                      imageUrl: item['message'],
+                      path: item['last_path'],
+                      offset: details.globalPosition,item:item);
+                },
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -330,12 +330,33 @@ class ChatScreen extends StatelessWidget {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            '${item['message']}',
-                            style: TextStyle(
-                              color: Colors.white,
+                          if (item['type'] == 'text')
+                            GestureDetector(
+                              onTapUp: (TapUpDetails details) {
+                                // messagePopUP(context, details.globalPosition,
+                                //     bloc, item);
+                              },
+                              child: Text(
+                                '${item['message']}',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16.0,
+                                    fontWeight: FontWeight.w500
+                                ),
+                              ),
                             ),
-                          ),
+                          if (item['type'] == 'audio')
+                            GestureDetector(
+                              onTapUp: (TapUpDetails details) {
+                                audioPopUP(context, details.globalPosition,
+                                    bloc, item);
+                              },
+                              child: Icon(
+                                Icons.play_arrow,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                            ),
                           SizedBox(
                             height: 5.0,
                           ),
@@ -403,7 +424,7 @@ class ChatScreen extends StatelessWidget {
                             context: context,
                             imageUrl: item['message'],
                             path: item['last_path'],
-                            offset: details.globalPosition,id:item['docID']);
+                            offset: details.globalPosition,item:item);
                         // showPopupMenu(Offset(MediaQuery.of(context).size.width +50,MediaQuery.of(context).size.height -150));
                       },
                       child: Column(
@@ -536,7 +557,7 @@ class ChatScreen extends StatelessWidget {
     double top = offset.dy;
     await showMenu(
       context: context,
-      position: RelativeRect.fromLTRB(left, top, 0, 0),
+      position: item['id'] == FirebaseAuth.instance.currentUser.uid ?RelativeRect.fromLTRB(left, top, 50, 0) : RelativeRect.fromLTRB(50, top, left, 0),
       items: [
         PopupMenuItem(
           child: InkWell(
@@ -546,6 +567,7 @@ class ChatScreen extends StatelessWidget {
               },
               child: Text('Play')),
         ),
+        if(item['id'] == FirebaseAuth.instance.currentUser.uid )
         PopupMenuItem(
           child: InkWell(
               onTap: () {
@@ -566,12 +588,12 @@ class ChatScreen extends StatelessWidget {
     );
   }
 
-  void imagePopUP({context, Offset offset, bloc, imageUrl, path,id}) async {
+  void imagePopUP({context, Offset offset, bloc, imageUrl, path,item}) async {
     double left = offset.dx;
     double top = offset.dy;
     await showMenu(
       context: context,
-      position: RelativeRect.fromLTRB(left, top, 0, 0),
+      position: item['id'] == FirebaseAuth.instance.currentUser.uid ?RelativeRect.fromLTRB(left, top, 50, 0) : RelativeRect.fromLTRB(50, top, left, 0),
       items: [
         PopupMenuItem(
           child: InkWell(
@@ -582,10 +604,11 @@ class ChatScreen extends StatelessWidget {
               },
               child: Text("Save to gallery")),
         ),
+        if(item['id'] == FirebaseAuth.instance.currentUser.uid )
         PopupMenuItem(
           child: InkWell(
               onTap: () {
-                bloc.deleteMessage(id);
+                bloc.deleteMessage(item['docID']);
                 Navigator.pop(context);
               },
               child: Text("Delete For Me")),

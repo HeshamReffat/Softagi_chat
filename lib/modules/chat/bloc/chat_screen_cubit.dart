@@ -485,7 +485,7 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
             .doc(value.id)
             .update({'docID': value.id});
         updateLastMessage(message);
-        //messagesList2.clear();
+        messagesList2.clear();
         remainingMessage = true;
         emit(SendUserMessage());
         print('usermessages');

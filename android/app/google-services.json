@@ -7,12 +7,20 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1081298622419:android:9cdb0fcb3fd8c138db0126",
+        "mobilesdk_app_id": "1:1081298622419:android:e37746838750f1c7db0126",
         "android_client_info": {
           "package_name": "com.alex.softagi_chat"
         }
       },
       "oauth_client": [
+        {
+          "client_id": "1081298622419-s5hsosituugngk3kqisqik69gtrj28k4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.alex.softagi_chat",
+            "certificate_hash": "ba20cc4734272d8bdc8943d208c0757eab79b6d7"
+          }
+        },
         {
           "client_id": "1081298622419-s0ub3t1jrhbiknsdl073gspp8h7u3bmv.apps.googleusercontent.com",
           "client_type": 3

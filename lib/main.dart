@@ -163,7 +163,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             darkTheme: ThemeData(
               brightness: Brightness.dark,
               primaryColorDark: Colors.white10,
-              primaryColor: Color(0xFF1C1C1C),
+              primaryColor: Colors.indigo,
               scaffoldBackgroundColor: Color(0xFF1C1C1C),
               floatingActionButtonTheme: FloatingActionButtonThemeData(
                 foregroundColor: Colors.white,
