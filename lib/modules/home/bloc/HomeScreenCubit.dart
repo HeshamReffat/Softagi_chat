@@ -25,6 +25,20 @@ class HomeScreenCubit extends Cubit<HomeScreenStates> {
       emit(HomeSuccess());
     });
   }
+  void deleteChat(id){
+    FirebaseFirestore.instance
+        .collection('users')
+        .doc(FirebaseAuth.instance.currentUser.uid)
+        .collection('chats').doc(id).collection('messages').get().then((value) {
+      for (DocumentSnapshot ds in value.docs){
+        ds.reference.delete();
+      }
+      FirebaseFirestore.instance
+          .collection('users')
+          .doc(FirebaseAuth.instance.currentUser.uid)
+          .collection('chats').doc(id).delete();
+    });
+  }
   void getRealTimeData() {
     FirebaseFirestore.instance
         .collection('users')

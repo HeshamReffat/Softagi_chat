@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
 import 'package:softagi_chat/modules/chat/chat_screen.dart';
 import 'package:softagi_chat/modules/home/bloc/HomeScreenCubit.dart';
@@ -41,7 +43,7 @@ class HomeScreen extends StatelessWidget {
                           radius: 20.0,
                           backgroundImage: bloc.data['image'] == null
                               ? NetworkImage(
-                                  'https://i.pinimg.com/originals/51/f6/fb/51f6fb256629fc755b8870c801092942.png')
+                              'https://i.pinimg.com/originals/51/f6/fb/51f6fb256629fc755b8870c801092942.png')
                               : NetworkImage(bloc.data['image']),
                         ),
                         SizedBox(
@@ -82,8 +84,12 @@ class HomeScreen extends StatelessWidget {
                               itemBuilder: (context, index) {
                                 if (bloc.myChats[index]['id'] !=
                                     FirebaseAuth.instance.currentUser.uid)
-                                  return buildItem(
-                                      bloc.myChats[index], context, bloc);
+                                  return itemSwipe(
+                                    bloc: bloc,
+                                    id: bloc.myChats[index]['id'],
+                                    child: buildItem(
+                                        bloc.myChats[index], context, bloc),
+                                  );
                                 else
                                   return Container();
                               },
@@ -153,12 +159,12 @@ class HomeScreen extends StatelessWidget {
                     radius: 10.0,
                     backgroundColor: Colors.red,
                     child:
-                        // Icon(
-                        //   Icons.message,
-                        //   size: 12,
-                        //   color: Colors.white,
-                        // )
-                        Text(
+                    // Icon(
+                    //   Icons.message,
+                    //   size: 12,
+                    //   color: Colors.white,
+                    // )
+                    Text(
                       '${item['newMessage']}',
                       style: TextStyle(
                           fontSize: 14,
@@ -209,6 +215,45 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget itemSwipe({child,bloc, id}) {
+    return Slidable(
+      actionPane: SlidableDrawerActionPane(),
+      actionExtentRatio: 0.25,
+      child: child,
+      // actions: <Widget>[
+      //   IconSlideAction(
+      //     caption: 'Archive',
+      //     color: Colors.blue,
+      //     icon: Icons.archive,
+      //     onTap: () => Fluttertoast.showToast(msg:'Archive'),
+      //   ),
+      //   IconSlideAction(
+      //     caption: 'Share',
+      //     color: Colors.indigo,
+      //     icon: Icons.share,
+      //     onTap: () => Fluttertoast.showToast(msg:'Share'),
+      //   ),
+      // ],
+      secondaryActions: <Widget>[
+        // IconSlideAction(
+        //   caption: 'More',
+        //   color: Colors.black45,
+        //   icon: Icons.more_horiz,
+        //   onTap: () => Fluttertoast.showToast(msg:'More'),
+        // ),
+        IconSlideAction(
+          caption: 'Delete',
+          color: Colors.red,
+          icon: Icons.delete,
+          onTap: () {
+            bloc.deleteChat(id);
+            return Fluttertoast.showToast(msg: 'Delete');
+          },
+        ),
+      ],
     );
   }
 

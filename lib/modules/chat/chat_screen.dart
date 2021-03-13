@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
+import 'package:popup_menu/popup_menu.dart';
 import 'package:softagi_chat/modules/chat/bloc/chat_screen_cubit.dart';
 import 'package:softagi_chat/modules/chat/bloc/chat_screen_states.dart';
 import 'package:softagi_chat/modules/home/home_screen.dart';
@@ -17,6 +18,7 @@ class ChatScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    PopupMenu.context = context;
     return BlocProvider(
       create: (context) => ChatScreenCubit()
         ..getUserId()
@@ -190,16 +192,6 @@ class ChatScreen extends StatelessWidget {
                                   },
                                   child: Icon(Icons.image),
                                 ),
-                                SizedBox(
-                                  width: 3.0,
-                                ),
-                                if (bloc.startRec)
-                                  InkWell(
-                                    onTap: () {
-                                      bloc.cancelRecord();
-                                    },
-                                    child: Icon(Icons.clear),
-                                  ),
                                 SizedBox(
                                   width: 3.0,
                                 ),
@@ -399,13 +391,19 @@ class ChatScreen extends StatelessWidget {
               //   10.0,
               // ),
               child: item['type'] == 'image'
-                  ? InkWell(
-                      onLongPress: () {
-                        showImageDialog(
+                  ? GestureDetector(
+                      onTapUp: (TapUpDetails details) {
+                        // showImageDialog(
+                        //     imageUrl: item['message'],
+                        //     path: item['last_path'],
+                        //     context: context,
+                        //     bloc: bloc);
+                        imagePopUP(
+                            bloc: bloc,
+                            context: context,
                             imageUrl: item['message'],
                             path: item['last_path'],
-                            context: context,
-                            bloc: bloc);
+                            offset: details.globalPosition,id:item['docID']);
                         // showPopupMenu(Offset(MediaQuery.of(context).size.width +50,MediaQuery.of(context).size.height -150));
                       },
                       child: Column(
@@ -436,28 +434,31 @@ class ChatScreen extends StatelessWidget {
                       child: Column(
                         children: [
                           if (item['type'] == 'text')
-                            InkWell(
-                              onTap:(){
-                                bloc.deleteMessage(item['docID']);
+                            GestureDetector(
+                              onTapUp: (TapUpDetails details) {
+                                //showPopup(details.globalPosition);
+                                messagePopUP(context, details.globalPosition,
+                                    bloc, item);
                               },
                               child: Text(
                                 '${item['message']}',
                                 style: TextStyle(
                                   color: Colors.white,
+                                  fontSize: 16.0,
+                                  fontWeight: FontWeight.w500
                                 ),
                               ),
                             ),
                           if (item['type'] == 'audio')
-                            MaterialButton(
-                              onPressed: () {
-                                audioDialog(
-                                    audioUrl: item['message'],
-                                    context: context,
-                                    bloc: bloc);
+                            GestureDetector(
+                              onTapUp: (TapUpDetails details) {
+                                audioPopUP(context, details.globalPosition,
+                                    bloc, item);
                               },
                               child: Icon(
                                 Icons.play_arrow,
                                 color: Colors.white,
+                                size: 28,
                               ),
                             ),
                           SizedBox(
@@ -469,8 +470,7 @@ class ChatScreen extends StatelessWidget {
                               Icon(
                                 Icons.check_rounded,
                                 size: 15.0,
-                                color: item['seen'] ==
-                                        'true'
+                                color: item['seen'] == 'true'
                                     ? Colors.blue
                                     : Colors.white,
                               ),
@@ -504,6 +504,104 @@ class ChatScreen extends StatelessWidget {
     );
   }
 
+  void messagePopUP(context, Offset offset, bloc, item) async {
+    double left = offset.dx;
+    double top = offset.dy;
+    await showMenu(
+      context: context,
+      position: RelativeRect.fromLTRB(left, top, 0, 0),
+      items: [
+        PopupMenuItem(
+          child: InkWell(
+              onTap: () {
+                bloc.deleteMessage(item['docID']);
+                Navigator.pop(context);
+              },
+              child: Text("Delete For Me")),
+        ),
+        PopupMenuItem(
+          child: InkWell(
+              onTap: () {
+                Navigator.pop(context);
+              },
+              child: Text("Cancel")),
+        ),
+      ],
+      elevation: 8.0,
+    );
+  }
+
+  void audioPopUP(context, Offset offset, bloc, item) async {
+    double left = offset.dx;
+    double top = offset.dy;
+    await showMenu(
+      context: context,
+      position: RelativeRect.fromLTRB(left, top, 0, 0),
+      items: [
+        PopupMenuItem(
+          child: InkWell(
+              onTap: () {
+                audioDialog(
+                    audioUrl: item['message'], context: context, bloc: bloc);
+              },
+              child: Text('Play')),
+        ),
+        PopupMenuItem(
+          child: InkWell(
+              onTap: () {
+                bloc.deleteMessage(item['docID']);
+                Navigator.pop(context);
+              },
+              child: Text("Delete For Me")),
+        ),
+        PopupMenuItem(
+          child: InkWell(
+              onTap: () {
+                Navigator.pop(context);
+              },
+              child: Text('Cancel')),
+        ),
+      ],
+      elevation: 8.0,
+    );
+  }
+
+  void imagePopUP({context, Offset offset, bloc, imageUrl, path,id}) async {
+    double left = offset.dx;
+    double top = offset.dy;
+    await showMenu(
+      context: context,
+      position: RelativeRect.fromLTRB(left, top, 0, 0),
+      items: [
+        PopupMenuItem(
+          child: InkWell(
+              onTap: () {
+                bloc.saveImage(imageUri: imageUrl, path: path);
+                Navigator.pop(context);
+                Fluttertoast.showToast(msg: 'Image Downloaded');
+              },
+              child: Text("Save to gallery")),
+        ),
+        PopupMenuItem(
+          child: InkWell(
+              onTap: () {
+                bloc.deleteMessage(id);
+                Navigator.pop(context);
+              },
+              child: Text("Delete For Me")),
+        ),
+        PopupMenuItem(
+          child: InkWell(
+              onTap: () {
+                Navigator.pop(context);
+              },
+              child: Text("Cancel")),
+        ),
+      ],
+      elevation: 8.0,
+    );
+  }
+
   void showImageDialog({imageUrl, path, context, bloc}) {
     showGeneralDialog(
       barrierLabel: "Barrier",
@@ -522,7 +620,7 @@ class ChatScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                     color: Colors.green,
                     borderRadius: BorderRadius.circular(20)),
-                child: FlatButton(
+                child: TextButton(
                   onPressed: () {
                     bloc.saveImage(imageUri: imageUrl, path: path);
                     Navigator.pop(context);

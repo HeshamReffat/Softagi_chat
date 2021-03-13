@@ -284,7 +284,16 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
           'last_path': Uri.file(audio.path).pathSegments.last,
           'type': 'audio',
           'seen': 'false',
+          'docID': '',
         }).then((value) {
+          FirebaseFirestore.instance
+              .collection('users')
+              .doc(FirebaseAuth.instance.currentUser.uid)
+              .collection('chats')
+              .doc(userData['id'])
+              .collection('messages')
+              .doc(value.id)
+              .update({'docID': value.id});
           print('my Audio');
           FirebaseFirestore.instance
               .collection('users')
@@ -300,7 +309,16 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
             'last_path': Uri.file(audio.path).pathSegments.last,
             'type': 'audio',
             'seen': 'false',
+            'docID': '',
           }).then((value) {
+            FirebaseFirestore.instance
+                .collection('users')
+                .doc(userData['id'])
+                .collection('chats')
+                .doc(FirebaseAuth.instance.currentUser.uid)
+                .collection('messages')
+                .doc(value.id)
+                .update({'docID': value.id});
             updateLastMessage('Audio');
             if (userData['chattingWith'] ==
                 FirebaseAuth.instance.currentUser.uid) {
@@ -393,13 +411,20 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
       _controller.clear();
     }
   }
-  void deleteMessage(id){
+
+  void deleteMessage(id) {
     FirebaseFirestore.instance
         .collection('users')
         .doc(FirebaseAuth.instance.currentUser.uid)
         .collection('chats')
         .doc(userData['id'])
-        .collection('messages').doc(id).delete();
+        .collection('messages')
+        .doc(id)
+        .delete()
+        .then((value) {
+      updateLastMessage('message deleted');
+    });
+    emit(DeleteMessages());
   }
 
   void sendMessage(String message) {
@@ -415,7 +440,7 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
       'time': Timestamp.now(),
       'last_messageTime': DateTime.now().millisecondsSinceEpoch,
       'last_path': 'notfound',
-      'docID':'',
+      'docID': '',
       'seen': 'false',
       'type': 'text',
     }).then((value) {
@@ -425,7 +450,8 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
           .collection('chats')
           .doc(userData['id'])
           .collection('messages')
-          .doc(value.id).update({'docID':value.id});
+          .doc(value.id)
+          .update({'docID': value.id});
       if (userData['chattingWith'] == FirebaseAuth.instance.currentUser.uid) {
         newMessage = 0;
       } else {
@@ -443,7 +469,7 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
         'message': message,
         'id': FirebaseAuth.instance.currentUser.uid,
         // Change message time stamp
-        'docID':'',
+        'docID': '',
         'time': Timestamp.now(),
         'last_messageTime': DateTime.now().millisecondsSinceEpoch,
         'last_path': 'notfound',
@@ -456,7 +482,8 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
             .collection('chats')
             .doc(FirebaseAuth.instance.currentUser.uid)
             .collection('messages')
-            .doc(value.id).update({'docID':value.id});
+            .doc(value.id)
+            .update({'docID': value.id});
         updateLastMessage(message);
         //messagesList2.clear();
         remainingMessage = true;
@@ -507,8 +534,6 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
       //print(image.path);
     });
   }
-
-
 
   void scroll(context) {
     scrollController.addListener(() {
@@ -664,7 +689,16 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
           'last_path': Uri.file(image.path).pathSegments.last,
           'type': 'image',
           'seen': 'false',
+          'docID': '',
         }).then((value) {
+          FirebaseFirestore.instance
+              .collection('users')
+              .doc(FirebaseAuth.instance.currentUser.uid)
+              .collection('chats')
+              .doc(userData['id'])
+              .collection('messages')
+              .doc(value.id)
+              .update({'docID': value.id});
           print('my image');
           FirebaseFirestore.instance
               .collection('users')
@@ -680,7 +714,16 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
             'last_path': Uri.file(image.path).pathSegments.last,
             'type': 'image',
             'seen': 'false',
+            'docID': '',
           }).then((value) {
+            FirebaseFirestore.instance
+                .collection('users')
+                .doc(userData['id'])
+                .collection('chats')
+                .doc(FirebaseAuth.instance.currentUser.uid)
+                .collection('messages')
+                .doc(value.id)
+                .update({'docID': value.id});
             updateLastMessage('Photo');
             if (userData['chattingWith'] ==
                 FirebaseAuth.instance.currentUser.uid) {

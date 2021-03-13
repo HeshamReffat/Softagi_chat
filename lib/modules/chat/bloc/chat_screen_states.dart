@@ -15,6 +15,7 @@ class UpdateMyLastMessage extends ChatScreenStates{}
 class SendUserMessage extends ChatScreenStates{}
 class SendMyMessage extends ChatScreenStates{}
 class GetMessages extends ChatScreenStates{}
+class DeleteMessages extends ChatScreenStates{}
 class GetMoreMessages extends ChatScreenStates{}
 class UpdateMyInfoChat extends ChatScreenStates{}
 class UpdateUserInfoChat extends ChatScreenStates{}
