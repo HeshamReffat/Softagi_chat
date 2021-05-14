@@ -42,7 +42,9 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
   List<DocumentSnapshot> messagesList2 = [];
   DocumentSnapshot lastMessage;
   bool remainingMessage = true;
+  bool sendingImage = false;
   bool isLoading = false;
+  bool sendingVoice = false;
 
   static ChatScreenCubit get(context) => BlocProvider.of(context);
 
@@ -263,9 +265,10 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
   }
 
   uploadAudioFile(File audio) {
+    sendingVoice = true;
     firebase_storage.FirebaseStorage.instance
         .ref()
-        .child('users/${Uri.file(audio.path).pathSegments.last}')
+        .child('users/${FirebaseAuth.instance.currentUser.uid}/Voice Messages/${Uri.file(audio.path).pathSegments.last}')
         .putFile(audio)
         .onComplete
         .then((value) {
@@ -326,6 +329,7 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
             } else {
               newMessage++;
             }
+            sendingVoice = false;
             print('user Audio');
             emit(AudioUploadSuccess());
           }).catchError((error) {
@@ -420,7 +424,10 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
         .doc(userData['id'])
         .collection('messages')
         .doc(id)
-        .delete()
+        .update({
+      'message':'message deleted',
+      'type':'text',
+    })
         .then((value) {
       updateLastMessage('message deleted');
     });
@@ -539,7 +546,7 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
     scrollController.addListener(() {
       if (scrollController.offset >=
               scrollController.position.maxScrollExtent &&
-          !scrollController.position.outOfRange) {
+          !scrollController.position.outOfRange && messagesList.length > 10) {
         getMoreMessages();
         emit(ScrollListen());
       }
@@ -563,7 +570,9 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
           .then((event) {
         messagesList2 = event.docs;
         //print('list =====> ${event.docs.length}');
-        lastMessage = messagesList2.last;
+        if(messagesList2.isNotEmpty) {
+          lastMessage = messagesList2.last;
+        }
         messagesList.addAll(messagesList2);
         if (messagesList2.length < docLimit) {
           remainingMessage = false;
@@ -667,6 +676,7 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
   }
 
   void uploadImage() {
+    sendingImage = true;
     firebase_storage.FirebaseStorage.instance
         .ref()
         .child('chatImages/${Uri.file(image.path).pathSegments.last}')
@@ -732,6 +742,7 @@ class ChatScreenCubit extends Cubit<ChatScreenStates> {
               newMessage++;
             }
             print('userimage');
+            sendingImage = false;
             emit(ImageUploadSuccess());
           }).catchError((error) {
             print(error.toString());

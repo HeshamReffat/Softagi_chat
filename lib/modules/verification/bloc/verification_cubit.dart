@@ -59,7 +59,7 @@ class VerificationCubit extends Cubit<VerificationStates> {
   }
 
   void getPhoneData() {
-    phone = '+20 ${getPhone()}';
+    phone = '+2${getPhone()}';
     smsCode = getCode();
     emit(VerificationPhone());
   }

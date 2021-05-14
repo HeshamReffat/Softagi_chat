@@ -511,9 +511,6 @@ class SettingsScreen extends StatelessWidget {
               value: ThemeMode.dark,
               onChanged: themeChanger.setTheme,
             ),
-            FlatButton(onPressed: (){
-              print(getAppTheme());
-            }, child: Text('get'))
           ],
         );
       },

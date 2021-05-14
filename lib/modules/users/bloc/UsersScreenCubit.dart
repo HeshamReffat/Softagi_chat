@@ -10,19 +10,22 @@ class UsersScreenCubit extends Cubit<UsersScreenStates> {
   UsersScreenCubit() : super(UsersScreenInit());
   List users = [];
   List<Contact> contact = [];
-  List<Contact> phonesNumber = [];
+  List<String> phonesNumber = [];
 
-  String getNumber(number) =>
-      number.toString().replaceAll('+2', '').replaceAll(' ', '').toLowerCase();
+  String getNumber(number) {
+    return number
+        .toString()
+        .replaceAll('+2', '')
+        .replaceAll(' ', '')
+        .toLowerCase();
+  }
 
   static UsersScreenCubit get(context) => BlocProvider.of(context);
 
-
-
   RefreshController refreshController =
-  RefreshController(initialRefresh: false);
+      RefreshController(initialRefresh: false);
 
-  void onRefresh() async{
+  void onRefresh() async {
     // monitor network fetch
     await Future.delayed(Duration(milliseconds: 500));
     // if failed,use refreshFailed()
@@ -39,33 +42,32 @@ class UsersScreenCubit extends Cubit<UsersScreenStates> {
     refreshController.loadComplete();
     emit(OnLoading());
   }
-    void getUsers() {
+
+  void getUsers() {
     emit(UsersScreenLoading());
     FirebaseFirestore.instance.collection('users').get().then((event) {
       print(event.docs.length);
       users = event.docs;
-      //getContacts();
+      contact.clear();
+      phonesNumber.clear();
+      getContacts();
       emit(UsersScreenSuccess());
     });
   }
 
   void getUsersSigned() {
-    //emit(UsersScreenLoading());
-      FirebaseFirestore.instance.collection('users').get().then((event) {
-        //print(event.docs.length);
-        var data = event.docs;
-        data.forEach((element) async {
-          for (int i = 0; i < contact.length; i++) {
-            if (getNumber(contact[i].phones.elementAt(0).value) ==
-                (getNumber(element['phone']))&& element['id'] != FirebaseAuth.instance.currentUser.uid) {
-              phonesNumber.add(contact[i]);
+    users.forEach((element) async {
+      for (int i = 0; i < contact.length; i++) {
+        if (getNumber(contact[i].phones.elementAt(0).value) ==
+                (getNumber(element['phone'])) &&
+            element['id'] != FirebaseAuth.instance.currentUser.uid) {
+          phonesNumber.add(getNumber(contact[i].phones.first.value.toString()));
 
-              print(phonesNumber.length);
-            }
-            emit(UsersSignedSuccess());
-          }
-        });
-      });
+        }
+      }
+      print(phonesNumber);
+    });
+    emit(UsersSignedSuccess());
   }
 
   void getContacts() async {
@@ -76,13 +78,13 @@ class UsersScreenCubit extends Cubit<UsersScreenStates> {
           if (element.phones.isNotEmpty) {
             contact.add(element);
           }
-          getUsersSigned();
+
           emit(GetContacts());
         });
         // element.phones.forEach((phone) {
         //   phonesNumber = phone.value;
         // print(contact.length);
-
+        getUsersSigned();
       });
     }
   }

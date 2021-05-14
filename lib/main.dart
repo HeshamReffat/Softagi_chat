@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_statusbarcolor/flutter_statusbarcolor.dart';
 import 'package:provider/provider.dart';
 import 'package:softagi_chat/modules/createprofile/create_profile.dart';
 import 'package:softagi_chat/modules/home/home_screen.dart';
@@ -25,12 +26,14 @@ void main() async {
   } else {
     screen = WelcomeScreen();
   }
-  return runApp(  MyApp(screen));
+  return runApp(MyApp(screen,));
 }
+
 class MyApp extends StatefulWidget {
   Widget screen;
 
   MyApp(this.screen);
+
   @override
   _MyAppState createState() => _MyAppState();
 }
@@ -38,7 +41,6 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   AppLifecycleState _lastLifecyleState;
   var profile = '';
-  var appTheme = getAppTheme();
 
   @override
   void initState() {
@@ -156,6 +158,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         create: (_) => ThemeChanger(),
         child: Builder(builder: (context) {
           final themeChanger = Provider.of<ThemeChanger>(context);
+          themeChanger.getThemes();
+          FlutterStatusbarcolor.setStatusBarColor(Colors.transparent);
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'Softagi Chat',
@@ -181,6 +185,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       ),
     );
   }
+
   void getProfile() {
     profile = getCreateProfile();
     setState(() {});

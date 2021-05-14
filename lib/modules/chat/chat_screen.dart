@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
+import 'package:photo_view/photo_view.dart';
 import 'package:popup_menu/popup_menu.dart';
 import 'package:softagi_chat/modules/chat/bloc/chat_screen_cubit.dart';
 import 'package:softagi_chat/modules/chat/bloc/chat_screen_states.dart';
@@ -11,6 +12,7 @@ import 'package:softagi_chat/modules/home/home_screen.dart';
 import 'package:softagi_chat/modules/playAudio.dart';
 import 'package:softagi_chat/shared/Prefrences.dart';
 import 'package:softagi_chat/shared/components.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ChatScreen extends StatelessWidget {
   var messageController = TextEditingController();
@@ -82,7 +84,9 @@ class ChatScreen extends StatelessWidget {
                     icon: Icon(
                       Icons.phone,
                     ),
-                    onPressed: () {},
+                    onPressed: () {
+                      launch(('tel://${bloc.userData['phone'].toString()}'));
+                    },
                   ),
                   IconButton(
                     icon: Icon(
@@ -125,7 +129,7 @@ class ChatScreen extends StatelessWidget {
                             color: Colors.green,
                             child: bloc.messagesList.length == 0
                                 ? Text(
-                                    'No messages yet...',
+                                    'Start chat Say Hi..!',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
@@ -139,6 +143,48 @@ class ChatScreen extends StatelessWidget {
                                     ),
                                   ),
                           ),
+                        if (bloc.sendingImage == true)
+                          Container(
+                              width: MediaQuery.of(context).size.width,
+                              padding: EdgeInsets.all(5),
+                              color: Colors.red,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  //Expanded(child: LinearProgressIndicator()),
+                                  Text(
+                                    'Sending Image  ',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Container(
+                                      width: 100,
+                                      child: LinearProgressIndicator()),
+                                ],
+                              )),
+                        if (bloc.sendingVoice == true)
+                          Container(
+                              width: MediaQuery.of(context).size.width,
+                              padding: EdgeInsets.all(5),
+                              color: Colors.red,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  //Expanded(child: LinearProgressIndicator()),
+                                  Text(
+                                    'Sending Voice  ',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Container(
+                                      width: 100,
+                                      child: LinearProgressIndicator()),
+                                ],
+                              )),
                       ],
                     ),
                   ),
@@ -292,16 +338,20 @@ class ChatScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              child:item['type'] == 'image'
+              child: item['type'] == 'image'
                   ? GestureDetector(
-                onTapUp: (TapUpDetails details) {
-                  imagePopUP(
-                      bloc: bloc,
-                      context: context,
-                      imageUrl: item['message'],
-                      path: item['last_path'],
-                      offset: details.globalPosition,item:item);
+                onTap: (){
+                  viewPhoto(item['message'],context);
                 },
+                onLongPressStart: (LongPressStartDetails details) {
+                        imagePopUP(
+                            bloc: bloc,
+                            context: context,
+                            imageUrl: item['message'],
+                            path: item['last_path'],
+                            offset: details.globalPosition,
+                            item: item);
+                      },
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -341,8 +391,7 @@ class ChatScreen extends StatelessWidget {
                                 style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 16.0,
-                                    fontWeight: FontWeight.w500
-                                ),
+                                    fontWeight: FontWeight.w500),
                               ),
                             ),
                           if (item['type'] == 'audio')
@@ -413,7 +462,10 @@ class ChatScreen extends StatelessWidget {
               // ),
               child: item['type'] == 'image'
                   ? GestureDetector(
-                      onTapUp: (TapUpDetails details) {
+                onTap: (){
+                  viewPhoto(item['message'],context);
+                },
+                onLongPressStart: (LongPressStartDetails details) {
                         // showImageDialog(
                         //     imageUrl: item['message'],
                         //     path: item['last_path'],
@@ -424,7 +476,8 @@ class ChatScreen extends StatelessWidget {
                             context: context,
                             imageUrl: item['message'],
                             path: item['last_path'],
-                            offset: details.globalPosition,item:item);
+                            offset: details.globalPosition,
+                            item: item);
                         // showPopupMenu(Offset(MediaQuery.of(context).size.width +50,MediaQuery.of(context).size.height -150));
                       },
                       child: Column(
@@ -464,10 +517,9 @@ class ChatScreen extends StatelessWidget {
                               child: Text(
                                 '${item['message']}',
                                 style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16.0,
-                                  fontWeight: FontWeight.w500
-                                ),
+                                    color: Colors.white,
+                                    fontSize: 16.0,
+                                    fontWeight: FontWeight.w500),
                               ),
                             ),
                           if (item['type'] == 'audio')
@@ -526,6 +578,10 @@ class ChatScreen extends StatelessWidget {
   }
 
   void messagePopUP(context, Offset offset, bloc, item) async {
+    var date = DateFormat("HH:mm");
+    var one = date
+        .format(DateTime.fromMillisecondsSinceEpoch(item['last_messageTime']));
+    var two = date.format(DateTime.now());
     double left = offset.dx;
     double top = offset.dy;
     await showMenu(
@@ -538,8 +594,16 @@ class ChatScreen extends StatelessWidget {
                 bloc.deleteMessage(item['docID']);
                 Navigator.pop(context);
               },
-              child: Text("Delete For Me")),
+              child: Text("Delete")),
         ),
+        // PopupMenuItem(
+        //   child: InkWell(
+        //       onTap: () {
+        //         //bloc.deleteMessage(item['docID']);
+        //         Navigator.pop(context);
+        //       },
+        //       child: Text("Delete For All")),
+        // ),
         PopupMenuItem(
           child: InkWell(
               onTap: () {
@@ -557,7 +621,9 @@ class ChatScreen extends StatelessWidget {
     double top = offset.dy;
     await showMenu(
       context: context,
-      position: item['id'] == FirebaseAuth.instance.currentUser.uid ?RelativeRect.fromLTRB(left, top, 50, 0) : RelativeRect.fromLTRB(50, top, left, 0),
+      position: item['id'] == FirebaseAuth.instance.currentUser.uid
+          ? RelativeRect.fromLTRB(left, top, 50, 0)
+          : RelativeRect.fromLTRB(50, top, left, 0),
       items: [
         PopupMenuItem(
           child: InkWell(
@@ -567,15 +633,15 @@ class ChatScreen extends StatelessWidget {
               },
               child: Text('Play')),
         ),
-        if(item['id'] == FirebaseAuth.instance.currentUser.uid )
-        PopupMenuItem(
-          child: InkWell(
-              onTap: () {
-                bloc.deleteMessage(item['docID']);
-                Navigator.pop(context);
-              },
-              child: Text("Delete For Me")),
-        ),
+        if (item['id'] == FirebaseAuth.instance.currentUser.uid)
+          PopupMenuItem(
+            child: InkWell(
+                onTap: () {
+                  bloc.deleteMessage(item['docID']);
+                  Navigator.pop(context);
+                },
+                child: Text("Delete")),
+          ),
         PopupMenuItem(
           child: InkWell(
               onTap: () {
@@ -588,12 +654,14 @@ class ChatScreen extends StatelessWidget {
     );
   }
 
-  void imagePopUP({context, Offset offset, bloc, imageUrl, path,item}) async {
+  void imagePopUP({context, Offset offset, bloc, imageUrl, path, item}) async {
     double left = offset.dx;
     double top = offset.dy;
     await showMenu(
       context: context,
-      position: item['id'] == FirebaseAuth.instance.currentUser.uid ?RelativeRect.fromLTRB(left, top, 50, 0) : RelativeRect.fromLTRB(50, top, left, 0),
+      position: item['id'] == FirebaseAuth.instance.currentUser.uid
+          ? RelativeRect.fromLTRB(left, top, 50, 0)
+          : RelativeRect.fromLTRB(50, top, left, 0),
       items: [
         PopupMenuItem(
           child: InkWell(
@@ -604,15 +672,15 @@ class ChatScreen extends StatelessWidget {
               },
               child: Text("Save to gallery")),
         ),
-        if(item['id'] == FirebaseAuth.instance.currentUser.uid )
-        PopupMenuItem(
-          child: InkWell(
-              onTap: () {
-                bloc.deleteMessage(item['docID']);
-                Navigator.pop(context);
-              },
-              child: Text("Delete For Me")),
-        ),
+        if (item['id'] == FirebaseAuth.instance.currentUser.uid)
+          PopupMenuItem(
+            child: InkWell(
+                onTap: () {
+                  bloc.deleteMessage(item['docID']);
+                  Navigator.pop(context);
+                },
+                child: Text("Delete")),
+          ),
         PopupMenuItem(
           child: InkWell(
               onTap: () {
@@ -624,7 +692,22 @@ class ChatScreen extends StatelessWidget {
       elevation: 8.0,
     );
   }
+ viewPhoto(String photo,context){
+  print('done');
+  return showDialog(context: context, builder: (context){
+    return Container(child: PhotoView(
+      imageProvider: NetworkImage(photo),
+      backgroundDecoration: BoxDecoration(color: Colors.black),
+      gaplessPlayback: false,
+      enableRotation: true,
+      minScale: PhotoViewComputedScale.contained * 0.8,
+      maxScale: PhotoViewComputedScale.covered * 1.8,
+      initialScale: PhotoViewComputedScale.contained,
+      basePosition: Alignment.center,
+    ),);
+  });
 
+}
   void showImageDialog({imageUrl, path, context, bloc}) {
     showGeneralDialog(
       barrierLabel: "Barrier",

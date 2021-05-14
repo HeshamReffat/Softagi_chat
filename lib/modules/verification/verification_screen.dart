@@ -59,44 +59,4 @@ class VerificationScreen extends StatelessWidget {
       },
     );
   }
-
-// void phoneAuthentication(String code, context) async {
-//   PhoneAuthCredential phoneAuthCredential =
-//       PhoneAuthProvider.credential(verificationId: this.code, smsCode: code);
-//
-//   await FirebaseAuth.instance
-//       .signInWithCredential(phoneAuthCredential)
-//       .then((value) {
-//     FirebaseFirestore.instance.collection('users').doc(value.user.uid).set({
-//       'first_name': 'no',
-//       'last_name': 'name',
-//       'id': value.user.uid,
-//       'phone': this.phone,
-//       'image':
-//           'https://i.pinimg.com/originals/51/f6/fb/51f6fb256629fc755b8870c801092942.png',
-//       'status': 'offline',
-//       'last_path': 'demo',
-//       'chatCreated': 'false',
-//       'last_message': '',
-//       'newMessage': 0,
-//       'lmessage_time': DateTime.now().millisecondsSinceEpoch,
-//       'action': '',
-//       'chattingWith':'',
-//       'slogan':'Available'
-//     }).then((value) {
-//       // navigateAndFinish(
-//       //   context,
-//       //   HomeScreen(),
-//       // );
-//     }).catchError((error) {
-//       print(error.toString());
-//     });
-//     print(value.user.uid);
-//     //userId = value.user.uid;
-//     navigateAndFinish(
-//         context, CreateProfile(userId: value.user.uid, phone: phone));
-//   }).catchError((e) {
-//     Fluttertoast.showToast(msg: 'SMS code is Wrong');
-//   });
-// }
 }

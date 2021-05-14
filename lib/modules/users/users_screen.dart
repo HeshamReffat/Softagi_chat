@@ -40,7 +40,7 @@ class UsersScreen extends StatelessWidget {
                       physics: BouncingScrollPhysics(),
                       itemBuilder: (context, index) {
                         if (bloc.users[index]['id'] !=
-                            FirebaseAuth.instance.currentUser.uid) {
+                            FirebaseAuth.instance.currentUser.uid && bloc.phonesNumber.contains(bloc.getNumber(bloc.users[index]['phone'])) && bloc.phonesNumber != null) {
                           return buildItem(bloc.users[index], context, bloc);
                         } else {
                           return Container();
@@ -120,17 +120,4 @@ class UsersScreen extends StatelessWidget {
           ),
         ),
       );
-
-  // void getContacts() async {
-  //   PermissionStatus status = await Permission.contacts.request();
-  //   if (status.isGranted) {
-  //     Iterable<Contact> contacts = await ContactsService.getContacts();
-  //     contacts.forEach((element) {
-  //       element.phones.forEach((phone) {
-  //         phonesNumber = phone.value;
-  //         print(phonesNumber);
-  //       });
-  //     });
-  //   }
-  // }
 }

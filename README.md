@@ -1,16 +1,29 @@
 # softagi_chat
 
-A new Flutter application.
+# Splash
 
-## Getting Started
+To switch to between projects.
+- Change Splash screen here
+     image: {logo path like}assets/images/logo.png
+     color: "background color like FFFFFF"
+- run flutter pub pub run flutter_native_splash:create
 
-This project is a starting point for a Flutter application.
+# App Icon
 
-A few resources to get you started if this is your first Flutter project:
+To switch to between projects.
+- Change App icon here
+     image_path: "{logo path like}assets/images/logo.png"
+- run flutter pub run flutter_launcher_icons:main
 
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
+# App Name
 
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+To switch to between projects.
+- change app name in pubspec.yaml
+    flutter_launcher_name:
+        name: "App Name"
+- run flutter pub run flutter_launcher_name:main
+
+To change app bundle name.
+- run flutter pub run change_app_package_name:main APP_BUNDLE_NAME
+
+# change settings and baseurl from static config located at assets/static_config.json

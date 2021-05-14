@@ -40,7 +40,7 @@ class _AudioPlayState extends State<AudioPlay> {
                 child: Container(
                   decoration: BoxDecoration(
                       color: Colors.green,
-                      borderRadius: BorderRadius.circular(20)),
+                      borderRadius: BorderRadius.circular(5)),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -67,6 +67,7 @@ class _AudioPlayState extends State<AudioPlay> {
                             setState(() {
                               isPlaying = false;
                             });
+                            Navigator.pop(context);
                           });
                           if (isPlaying == false) {
                             await _player.play(widget.audio);
